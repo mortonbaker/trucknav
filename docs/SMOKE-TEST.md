@@ -229,3 +229,7 @@ Fake drive: `~/route-wholefoods.txt` (Valhalla polyline6 → 322 fixes) replayed
 Infra fixes on the way: atlas01 `/etc/resolv.conf` was immutable with the home router first → tailnet names never resolved (the "MagicDNS flaky" mystery); now `100.100.100.100` first. Emulator FUSE makes shell-pushed dirs unreadable to the app → `emu.sh assets` chowns after push.
 
 Open from S17: alert-class toggles UI (gate exists: `VoiceGate.disabledClasses`), favorites/Home/Work, route preview with ETA/alternates, favorites API + MCP, auto night mode, speed limits, add-a-stop, arrival flow.
+
+## 2026-09-20 — S7 source implementation, physical run BLOCKED
+
+See [S7 implementation receipt](S7-IMPLEMENTATION.md) and [pre-edit controls](S7-CONTROLS.md). Callback extraction: 40 bodies/references unchanged across 36 Kotlin files against main a09515f. Physical baseline, rendered contrast, all-pane interaction, launcher/Recents icon and restoration gates NOT RUN: main/source and tablet held by claude-studio for S5. No S7 APK installed; no DONE claim. Lint reports eight existing errors in unchanged files; raw report is `evidence/s7-source/lint.xml`.

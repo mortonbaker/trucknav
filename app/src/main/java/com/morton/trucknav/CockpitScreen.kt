@@ -8,6 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -139,13 +145,14 @@ private fun Rail(modifier: Modifier, current: Pane, vertical: Boolean, watcher: 
         Triple(Pane.Vehicle, Icons.Filled.ToggleOn, "Vehicle"),
         Triple(Pane.Apps, Icons.Filled.Apps, "Apps"),
     )
-    val button: @Composable (Triple<Pane?, ImageVector, String>) -> Unit = { (p, icon, label) ->
+    val button: @Composable (Triple<Pane?, ImageVector, String>, Modifier) -> Unit = { (p, icon, label), slot ->
         val selected = p != null && p == current
         Column(
-            Modifier.padding(4.dp).clip(RoundedCornerShape(14.dp))
+            slot.padding(4.dp).clip(RoundedCornerShape(14.dp))
                 .background(if (selected) Color(0xFF1f5f8b) else Color.Transparent)
                 .clickable { if (p != null) onSelect(p) else onYouTube() }
-                .padding(vertical = 8.dp, horizontal = 6.dp).width(72.dp),
+                .semantics { this.selected = selected }
+                .heightIn(min = 56.dp).padding(vertical = 6.dp, horizontal = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
@@ -153,16 +160,15 @@ private fun Rail(modifier: Modifier, current: Pane, vertical: Boolean, watcher: 
         }
     }
     if (vertical) {
-        Column(modifier.background(Color(0xFF10141a)), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier.background(Color(0xFF10141a)).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(8.dp))
-            items.forEach { button(it) }
-            Spacer(Modifier.weight(1f))
+            items.forEach { button(it, Modifier.fillMaxWidth()) }
+            Spacer(Modifier.height(4.dp))
             NowPlayingMini(watcher, vertical = true, onOpen = onOpenSession)
         }
     } else {
         Row(modifier.background(Color(0xFF10141a)), verticalAlignment = Alignment.CenterVertically) {
-            items.forEach { button(it) }
-            Spacer(Modifier.weight(1f))
+            items.forEach { button(it, Modifier.weight(1f)) }
             NowPlayingMini(watcher, vertical = false, onOpen = onOpenSession)
         }
     }

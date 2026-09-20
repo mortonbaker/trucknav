@@ -1,51 +1,30 @@
 package com.morton.trucknav.ui.theme
-
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme =
-    darkColorScheme(primary = Color.White, secondary = Color.LightGray, tertiary = Color.DarkGray)
-
-private val LightColorScheme =
-    lightColorScheme(
-        primary = Color.Black,
-        secondary = Color.DarkGray,
-        tertiary = Color.LightGray,
-
-        /* Other default colors to override
-        background = Color(0xFFFFFBFE),
-        surface = Color(0xFFFFFBFE),
-        onPrimary = Color.White,
-        onSecondary = Color.White,
-        onTertiary = Color.White,
-        onBackground = Color(0xFF1C1B1F),
-        onSurface = Color(0xFF1C1B1F),
-        */
-    )
-
+private val CockpitScheme = darkColorScheme(
+    primary = CockpitColors.Accent, onPrimary = CockpitColors.Background,
+    primaryContainer = CockpitColors.Selected, onPrimaryContainer = CockpitColors.Text,
+    inversePrimary = CockpitColors.Selected,
+    secondary = CockpitColors.Accent, onSecondary = CockpitColors.Background,
+    secondaryContainer = CockpitColors.Raised, onSecondaryContainer = CockpitColors.Text,
+    tertiary = CockpitColors.Accent, onTertiary = CockpitColors.Background,
+    tertiaryContainer = CockpitColors.Raised, onTertiaryContainer = CockpitColors.Text,
+    background = CockpitColors.Background, onBackground = CockpitColors.Text,
+    surface = CockpitColors.Card, onSurface = CockpitColors.Text,
+    surfaceVariant = CockpitColors.Raised, onSurfaceVariant = CockpitColors.Secondary,
+    surfaceTint = Color.Transparent,
+    inverseSurface = CockpitColors.Text, inverseOnSurface = CockpitColors.Background,
+    error = CockpitColors.Error, onError = CockpitColors.Background,
+    errorContainer = CockpitColors.ErrorContainer, onErrorContainer = CockpitColors.Text,
+    outline = CockpitColors.Outline, outlineVariant = CockpitColors.Raised, scrim = Color.Black,
+    surfaceBright = CockpitColors.Raised, surfaceDim = CockpitColors.Background,
+    surfaceContainerLowest = CockpitColors.Background, surfaceContainerLow = CockpitColors.Rail,
+    surfaceContainer = CockpitColors.Card, surfaceContainerHigh = CockpitColors.Raised,
+    surfaceContainerHighest = CockpitColors.Raised,
+)
 @Composable
-fun FerrostarTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-  val colorScheme =
-      when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-          val context = LocalContext.current
-          if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-      }
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+fun FerrostarTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = CockpitScheme, typography = Typography, content = content)
 }
