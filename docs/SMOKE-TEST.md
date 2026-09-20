@@ -233,3 +233,26 @@ Open from S17: alert-class toggles UI (gate exists: `VoiceGate.disabledClasses`)
 ## 2026-09-20 — S7 source implementation, physical run BLOCKED
 
 See [S7 implementation receipt](S7-IMPLEMENTATION.md) and [pre-edit controls](S7-CONTROLS.md). Callback extraction: 40 bodies/references unchanged across 36 Kotlin files against main a09515f. Physical baseline, rendered contrast, all-pane interaction, launcher/Recents icon and restoration gates NOT RUN: main/source and tablet held by claude-studio for S5. No S7 APK installed; no DONE claim. Lint reports eight existing errors in unchanged files; raw report is `evidence/s7-source/lint.xml`.
+
+## 2026-09-20 — S6 on-device routing, feature branch emulator acceptance
+
+Branch `routing-s6`, base `2eaa770`, debug base version 0.18.0/code 52. AVD `trucknav-s6`, serial `emulator-5556`. No physical install and no main version bump. Controls documented before edits in [S6-ROUTING.md](S6-ROUTING.md).
+
+| Criterion | Measured | Result |
+|---|---|---|
+| Server preferred when responsive | source=Server, 563 ms | PASS |
+| Local route >50 mi, <=10 s | 287852.625 m (178.86 mi), 1168 ms cold actor, 407 ms second | PASS on emulator |
+| Local/server distance within 5% | both 287852.625 m, delta=0 | PASS |
+| Real HTTP server stalls: fallback <=10 s | 3478 ms including 3 s timeout | PASS |
+| Two local routes, process <600 MiB | 257681 / 263401 KiB PSS | PASS on emulator |
+| Navigation UI process <600 MiB | 275118 KiB PSS after controls/camera transitions | PASS on emulator |
+| External network unavailable, map and route visible | app-UID-only emulator firewall, loopback allowed, screenshot retained, restoration verified | PASS |
+| Existing controls preserved | Start, Mute/Unmute, Overview, Recenter, End; late immediate-cancel answer never starts guidance | PASS |
+| Failure handling | Missing pack and outside coverage errors; Route unavailable dialog + Dismiss; no crash | PASS |
+| Unit policy tests | 4 passed, including cancellation and malformed-response fallback policy | PASS |
+| Build | x86_64 debug and ARM64 R8 release, vital lint included | PASS |
+| Real tablet performance / GPS reroute / ARM64 runtime | Not run; main deployment and USB outage window required | OPEN |
+
+Raw receipts and screenshot: `docs/evidence/s6/`. Native source evidence: `~/evidence/s6-native-20260920-152558/`; UI: `~/evidence/s6-ui-20260920-152655/`. Re-run with `bash docs/s6-smoke.sh native` / `ui` under the dedicated emulator lease.
+
+Setup fixes: shell-pushed asset ownership repaired on emulator backing storage; Android's first-run full-screen tutorial dismissed. Earlier UI run had a gray PMTiles basemap and parser errors; later rendered-screen run had no such errors. Root cause is not proven and this observation remains an integration follow-up, not a claimed fix. No changes to LocalAssetServer or shared services.

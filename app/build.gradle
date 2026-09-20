@@ -8,10 +8,11 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId "com.morton.trucknav"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         minSdk 29
         targetSdk 36
-        versionCode 80
-        versionName "0.21.0"
+        versionCode 68
+        versionName "0.22.0"
         vectorDrawables { useSupportLibrary true }
         Properties properties = new Properties()
         def lp = project.rootProject.file("local.properties")
@@ -62,6 +63,9 @@ android {
 }
 
 dependencies {
+    implementation project(":routing")
+    androidTestImplementation "androidx.test:runner:1.7.0"
+    androidTestImplementation libs.androidx.test.junit
     coreLibraryDesugaring libs.desugar.jdk.libs
     implementation libs.androidx.ktx
     implementation libs.androidx.lifecycle.runtime.ktx

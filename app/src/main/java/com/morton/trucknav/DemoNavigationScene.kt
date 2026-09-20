@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
 import com.stadiamaps.ferrostar.composeui.config.VisualNavigationViewConfig
+import com.stadiamaps.ferrostar.composeui.config.withInstructionsView
 import com.stadiamaps.ferrostar.composeui.config.withCustomOverlayView
 import com.stadiamaps.ferrostar.composeui.config.withSpeedLimitStyle
 import com.stadiamaps.ferrostar.composeui.runtime.KeepScreenOnDisposableEffect
@@ -109,6 +110,8 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
     }
   }
   val sceneState by viewModel.sceneState.collectAsState()
+  val routeSource by viewModel.routeSource.collectAsState()
+  val routeError by viewModel.routeError.collectAsState()
   val mapStyle by MapStyles.current.collectAsState()
 
   // Ferrostar's default navigation padding is derived from the *screen* size,
@@ -217,6 +220,9 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       config = VisualNavigationViewConfig.Default().withSpeedLimitStyle(SignageStyle.MUTCD),
       views =
           NavigationViewComponentBuilder.Default()
+              .withInstructionsView { modifier, state ->
+                com.morton.trucknav.routingui.RoutingInstructions(modifier, state, routeSource)
+              }
               .withCustomOverlayView(
                   customOverlayView = { modifier ->
                     NotNavigatingOverlay(
@@ -253,6 +259,15 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
           location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
           label = hit.label, origin = DestinationSelectionOrigin.SearchResult)
     }
+  }
+
+  routeError?.let { message ->
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = viewModel::dismissRouteError,
+        title = { androidx.compose.material3.Text("Route unavailable") },
+        text = { androidx.compose.material3.Text(message) },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = viewModel::dismissRouteError) { androidx.compose.material3.Text("Dismiss") } },
+    )
   }
 
   if (sceneState.isDestinationSheetVisible) {
