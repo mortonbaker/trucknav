@@ -211,3 +211,8 @@ Harness note: `ui.sh tap` substring-matched the wrong node more than once ("Map"
 - Vehicle pane (rail item): tiles built from the board's switch list; unreachable state renders "relay board not on this network" with the join hint (verified on the phone hotspot with the board in AP mode). Power strip Starlink cell now reads through the same client.
 - Observed: on the phone hotspot the tablet cannot reach the Venus Pi either over the tailnet (100.112.123.30, 100 % loss) or the hotspot LAN (10.61.176.141) — hotspot client isolation suspected; power strip shows `Link offline`. Tracked under S16.
 - R8/arm64 build: 26 MB, 75 s push over the hotspot.
+
+
+## 2026-09-20 — S7 source implementation, physical run BLOCKED
+
+See [S7 implementation receipt](S7-IMPLEMENTATION.md) and [pre-edit controls](S7-CONTROLS.md). Callback extraction: 40 bodies/references unchanged across 36 Kotlin files against main a09515f. Physical baseline, rendered contrast, all-pane interaction, launcher/Recents icon and restoration gates NOT RUN: main/source and tablet held by claude-studio for S5. No S7 APK installed; no DONE claim. Lint reports eight existing errors in unchanged files; raw report is `evidence/s7-source/lint.xml`.

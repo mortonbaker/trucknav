@@ -102,8 +102,9 @@ def main():
                         if not (x1>x0 and y1>y0): continue
                         if min(x1-x0,y1-y0)/density <47.5:
                             small.append({'label':n.get('content-desc') or n.get('text'),'bounds':n.get('bounds'),'dp':[round((x1-x0)/density,1),round((y1-y0)/density,1)]})
-                    rows.append({'id':'V1/V3','screen':tag,'status':'FAIL' if small else 'PASS','small_targets':small,'note':'Size check only; PNG still requires clipping/contrast inspection'})
+                    rows.append({'id':'V3-visible-bounds','screen':tag,'status':'FAIL' if small else 'PASS','small_targets':small,'note':'Visible size check only; V1 clipping/coverage and V2 contrast remain NOT RUN'})
     finally:
+        (args.output/'results.json').write_text(json.dumps(rows,indent=2)+'\n')
         # Restore even after failures, but never steal an expired/reassigned lease.
         for key,value in saved.items():
             if value=='null': t.shell('settings','delete','system',key)
