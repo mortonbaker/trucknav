@@ -40,6 +40,9 @@ object AppModule {
         appContext = context.applicationContext
         com.morton.trucknav.nav.NavLog.init(appContext)
         com.morton.trucknav.nav.Favorites.init(appContext)
+        com.morton.trucknav.nav.NavPrefs.gate = voiceGate
+        com.morton.trucknav.nav.NavPrefs.init(appContext)
+        com.morton.trucknav.nav.NightMode.start()
         api.start()
         MapStyles.init(appContext)
         assets.start()
