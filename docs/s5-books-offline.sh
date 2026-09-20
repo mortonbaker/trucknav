@@ -33,6 +33,8 @@ docs/tablet-lock.sh $S status | grep -q "$AGENT" || { echo "tablet lease not hel
 sh am start -n $P/.MainActivity >/dev/null 2>&1; sleep 3   # an install leaves the old launcher on screen
 V=$(sh dumpsys package $P | grep -m1 versionName | tr -d '\r '); echo "build: $V  tag: $TAG  evidence: $E"
 echo "$V" > "$E/version.txt"
+# The book plays through the speaker; a muted run does not invite anyone nearby to tap Pause.
+VOL0=$(sh cmd media_session volume --stream 3 --get 2>/dev/null | grep -oE "volume is [0-9]+" | grep -oE "[0-9]+"); sh cmd media_session volume --stream 3 --set 0 >/dev/null 2>&1; echo "media volume ${VOL0:-?} -> 0 for the run"
 sh dumpsys media_session > "$E/pre-media.txt"; adb -s $S logcat -d > "$E/pre-logcat.txt"; shot pre
 sh dumpsys activity activities | grep -m1 topResumedActivity > "$E/pre-foreground.txt"
 adb -s $S logcat -c; adb -s $S logcat -c -b crash
@@ -142,6 +144,7 @@ adb -s $S logcat -d -b crash > "$E/crash.txt"; c=$(grep -c "Process: $P" "$E/cra
 row "Crash gate" "0 crashes for $P" "$c" "$([ "$c" = 0 ] && echo PASS || echo FAIL)" "crash.txt"
 tap "Play/Pause"; sleep 1   # leave it paused, as found
 [ -n "$SPEED0" ] && svc SPEED --ef speed $SPEED0
+[ -n "$VOL0" ] && sh cmd media_session volume --stream 3 --set $VOL0 >/dev/null 2>&1
 sh rm -f /sdcard/s5-sampler.sh
 adb -s $S logcat -d > "$E/post-logcat.txt"; sh dumpsys media_session > "$E/post-media.txt"; shot post
 sh rm -f /sdcard/s5-offline.log /sdcard/ui.xml
