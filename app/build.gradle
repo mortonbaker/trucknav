@@ -11,8 +11,8 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         minSdk 29
         targetSdk 36
-        versionCode 88
-        versionName "0.23.2"
+        versionCode 94
+        versionName "0.24.2"
         vectorDrawables { useSupportLibrary true }
         Properties properties = new Properties()
         def lp = project.rootProject.file("local.properties")
