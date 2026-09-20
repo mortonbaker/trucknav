@@ -6,6 +6,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -72,15 +77,18 @@ fun NowPlayingPane(watcher: SessionWatcher, pkg: String, browser: @Composable (o
 
     Card(modifier.fillMaxWidth()) {
         val a = active
-        Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Reserve controls first. Large text may require scrolling the short portrait pane.
+        val artHeight = (maxHeight - if (isBook) 420.dp else 270.dp).coerceIn(0.dp, 240.dp)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Art takes whatever height is left after the controls, never more.
-            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().height(artHeight), contentAlignment = Alignment.Center) {
                 Box(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(20.dp)).background(Color(0xFF1a2028)), contentAlignment = Alignment.Center) {
                     if (a?.art != null) Image(a.art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     else Icon(Icons.Filled.MusicNote, null, tint = Color(0xFF3a4552), modifier = Modifier.size(96.dp))
                 }
             }
-            Text(a?.title ?: "Nothing playing", fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            Text(a?.title ?: "Nothing playing", fontSize = 24.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             Text(a?.artist ?: (if (isBook) "Pick a book from the list" else "Pick something from the library"), color = Color(0xFF9aa4b2), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             if (a != null) Progress(a)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -103,11 +111,12 @@ fun NowPlayingPane(watcher: SessionWatcher, pkg: String, browser: @Composable (o
             if (isBook) {
                 androidx.compose.material3.Button(
                     onClick = { speed = com.morton.trucknav.books.Speed.next(ctx); com.morton.trucknav.books.BooksPlayerService.setSpeed(ctx, speed) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1a2028), contentColor = Color.White),
                 ) { Text("Speed  " + com.morton.trucknav.books.Speed.label(speed), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 6.dp)) }
                 DownloadRow()
             }
+        }
         }
     }
 }
@@ -123,18 +132,18 @@ private fun DownloadRow() {
     LaunchedEffect(id) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.morton.trucknav.books.BookDownloads.scan(ctx) } }
     val st = states[id]
     val dark = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1a2028), contentColor = Color.White)
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when (st) {
             is com.morton.trucknav.books.BookDownloads.State.Downloading ->
-                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.weight(1f), colors = dark) { Text("Downloading ${(st.fraction * 100).toInt()}%", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = dark) { Text("Downloading ${(st.fraction * 100).toInt()}%", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
             is com.morton.trucknav.books.BookDownloads.State.Done -> {
-                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.weight(1f), colors = dark) { Text("Downloaded  " + com.morton.trucknav.books.BookDownloads.gb(st.bytes), fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
-                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.delete(ctx, id) }, colors = dark) { Text("Delete download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = dark) { Text("Downloaded  " + com.morton.trucknav.books.BookDownloads.gb(st.bytes), fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.delete(ctx, id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = dark) { Text("Delete download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
             }
             is com.morton.trucknav.books.BookDownloads.State.Failed ->
-                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.weight(1f), colors = dark) { Text("Download failed, retry", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = dark) { Text("Download failed, retry", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
             else ->
-                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.weight(1f), colors = dark) { Text("Download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = dark) { Text("Download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -82,13 +83,13 @@ private fun DestinationSelectionBottomSheetContent(
     )
     Button(
         onClick = onStartNavigation,
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp).heightIn(min = 48.dp),
     ) {
       Text(stringResource(R.string.start_navigation))
     }
     OutlinedButton(
         onClick = onClose,
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp).heightIn(min = 48.dp),
     ) {
       Text(stringResource(R.string.close_destination_sheet))
     }

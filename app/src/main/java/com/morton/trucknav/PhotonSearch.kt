@@ -108,7 +108,7 @@ fun PhotonSearch(
                     )
                 }
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = ""; hits = emptyList(); dismiss() }, modifier = Modifier.size(44.dp)) {
+                    IconButton(onClick = { query = ""; hits = emptyList(); dismiss() }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
