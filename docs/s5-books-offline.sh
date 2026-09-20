@@ -6,7 +6,7 @@
 export PATH=$PATH:$HOME/Android/Sdk/platform-tools
 cd "$(dirname "$0")/.." || exit 1
 TAG=${1:?tag}; AGENT=${2:-claude-studio}
-S=100.95.16.47:5555; P=com.morton.trucknav
+S=${SERIAL:-100.95.16.47:5555}; P=com.morton.trucknav   # SERIAL=R9PT207J6ZN when the tablet is on USB (survives the Wi-Fi cut)
 BOOK=8c5b4b84-f32a-4a0e-a8b3-8c64f2809915   # Counter-Elites and the New Populism, 4 tracks, 1124 s
 TITLE="Counter-Elites and the New Populism"
 FILES=/sdcard/Android/data/$P/files/books/$BOOK
