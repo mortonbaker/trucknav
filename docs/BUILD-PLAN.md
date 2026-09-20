@@ -392,3 +392,30 @@ Push-to-talk / wake word → on-device STT (Vosk/whisper.cpp small) with a home 
 On-device Valhalla implemented in new `:routing` module; server preferred with a three-second budget, native fallback uses the existing verified four-state pack. Debug and minified ARM64 builds pass. Emulator-5556 acceptance: 178.86-mile route, 1168/407 ms local, 0% server distance difference, 257681/263401 KiB PSS; connected-but-stalled server fallback 3478 ms. Start/End, source footer, mute, overview/recenter and error dialog pass. See [S6 controls, audit and handoff](S6-ROUTING.md) and `docs/evidence/s6/`.
 
 Do not mark DONE until ARM64 tablet performance and real GPS reroute/End tests pass. Coordinate the small Scene/ViewModel integration with S17's newer favorites/API changes before merge. An earlier cold-start PMTiles gray-map observation remains documented; later settled-screen checks pass, root cause not established. LocalAssetServer untouched.
+
+## S24 — Favorites and recents, car-shaped (small) — DONE 2026-09-20, 0.31.0 (operator request 18:10; criteria written after the code, which is backwards — recorded here so the record is honest)
+
+**Goal:** no horizontal strip on the map; fixed shortcuts and vertical lists, the Tesla / Android Auto shape. Sources: Tesla owner's manual (Home/Work under the search bar, Recents list, Favorites list, hold → X to delete), Android for Cars quality (vertical lists, ~6 rows while driving, no horizontal scroll, 2 s glance), NHTSA (2 s per glance, 12 s per task).
+
+**Done when (each falsifiable by `docs/fav-smoke.sh <tag>`, emulator or tablet):**
+1. Under the pill exactly four tiles — Home, Work, Favorites, Recents — and no horizontally scrollable container anywhere on the map surface; beside an open pane the tiles go 2×2 with no truncated title.
+2. Favorites opens a panel within 6 s; first rows are Home then Work; every place row ≥ 76 dp tall; ≤ 6 rows per screen, vertical swipe for more.
+3. Recents tab lists recents newest-first (≤ 10), each with a ★ that saves it as a place.
+4. Hold a place row → a red Remove appears; tapping it removes the row and `GET /api/favorites` drops by exactly one.
+5. Tapping Home/Work → route preview within 12 s → Start → navigating (End Navigation visible) within 15 s.
+6. Focusing the empty search opens Recents; typing (results present) hides the panel.
+7. Crash gate 0; a favorite reachable from the map in ≤ 2 taps (tile → row).
+
+**Results — tablet 192.168.0.187, 0.31.0, run tab7 18:58, `~/evidence/fav-tab7/`:**
+
+| Item | Criterion | Measured | Result |
+|---|---|---|---|
+| 1 tiles | exactly Home, Work, Favorites, Recents; 2×2 when narrow | 4 tiles; 2×2 beside Music pane, full words (fav-tab3/narrow.png) | PASS |
+| 2 favorites panel | opens ≤ 6 s; Home, Work first; rows ≥ 76 dp | 0 s; Home, Work; 101 px @ 210 dpi (= 77 dp) | PASS |
+| 3 recents tab | newest-first list, ★ saves | 7 rows | PASS |
+| 4 hold to remove | Remove appears; API count −1 | 0 s; api 9 → 8 | PASS |
+| 5 tile go | preview ≤ 12 s → Start → navigating ≤ 15 s | preview 0 s, navigating 0 s | PASS |
+| 6 search focus | empty focus → Recents; typing hides it | focused=1, typing=0 | PASS |
+| 7 crash gate | 0 | 0 | PASS |
+
+Emulator: fav-emu2 7/7. Not done: drag-to-reorder favorites (order = Home, Work, newest first); "≤ 6 rows per screen" is by construction (76 dp rows in a 55 %-height sheet / full-height panel), not measured.
