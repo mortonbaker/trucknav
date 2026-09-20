@@ -26,7 +26,7 @@ Order of work from here:
 | S11 | Nav event log (B0) | small | DONE v0.14.0. |
 | S17 | Navigation, finished: no foreign navigator, alert prefs, favorites (Home/Work), favorites API + MCP | medium | Operator: before any other slice. |
 | S4 | YouTube history, no Live/Shorts | small + sign-in | Needs the operator's Google sign-in on the tablet. |
-| S5 | Books offline downloads | medium | Independent of the map. |
+| S5 | Books offline downloads | medium | DONE v0.17.1. |
 | S9 | Harness + runbook | small | Fold the S0–S3 scripts into one `cockpit-smoke.sh`; the skill draft exists in the handoff. |
 | S7 | Look and feel (icon, palette, typography) | small | Cosmetic; after the behaviour is right. |
 | S6 | On-device routing | large | Two sessions; biggest single win for no-signal driving. |
@@ -123,7 +123,7 @@ Housekeeping, not slices: DHCP reservation / `manual_ip` for the relay board; ad
 
 ---
 
-## S5 — Books offline downloads (medium) — code shipped 0.15.2 (main), D1/D2/D3 PASS, D2b/D4/D5 pending a clean run
+## S5 — Books offline downloads (medium) — DONE 2026-09-20, v0.17.1 (all criteria PASS, run6)
 
 **Goal:** a downloaded book plays with no network at all.
 
@@ -164,6 +164,24 @@ Interference log (why run2/run3 are partial):
 - run3 13:15:18: `installPackageLI` of 0.16.0 (initiating `com.android.shell`, over the new USB transport `R9PT207J6ZN`) killed pid 19027 while the tree claim and tablet lease were both held by claude-studio.
 
 Remaining to close S5 on a build that contains it: D2b, D4, D5 (one run of `docs/s5-books-offline.sh`, ~9 min, needs the tablet to itself). Use the USB serial for the offline window now that the tablet is cabled to atlas01.
+
+---
+
+### S5 CLOSED — 0.17.1 (main 4c07879+), run6 2026-09-20 14:03, evidence `~/evidence/s5-run6/`
+
+| Item | Criterion | Measured | Result |
+|---|---|---|---|
+| D1 download | 4 track files, size == server `metadata.size`; manifest last | 7867442 / 3246477 / 4745984 / 6635752 exact; manifest.json | PASS |
+| D1b badge + storage | check badge on the cover; "Downloads: N used, M free" | `content-desc="Downloaded"`, `Downloads: 276 MB used, 12.0 GB free` | PASS |
+| D2 local source | `source=local` in the player log | `opened … source=local session=true` | PASS |
+| D2b pane buttons | "Downloaded" + "Delete download" | `Downloaded  21 MB`, `Delete download` | PASS |
+| D3 offline 5 min | ≥50 samples PLAYING, monotonic, crosses a track boundary, advance == wall ±5 % | 60/60 PLAYING, items 0→1→2, 301 s advanced in 300 s wall, 0 touches | PASS |
+| D4 sync after Wi-Fi | server == pane ±20 s | diff 2 s, converged 7 s after reconnect (run5: converged with the player *paused*, diff 1 s) | PASS |
+| D5a delete | directory gone | `No such file or directory` | PASS |
+| D5b stream fallback | reopen streams | `source=stream session=true` | PASS |
+| Crash gate | 0 | 0 | PASS |
+
+Additional defect found by run4/run5, fixed in 0.17.1: `registerDefaultNetworkCallback` never fires on this tablet because the app's default network is the Tailscale VPN, which survives a Wi-Fi flap; the flush now watches any INTERNET-capable network and also retries every 10 s while anything is queued. Runs 2/4/5 D3 were BLOCKED by hardware touches (operator, confirmed) — the harness now reports touches during the cut and mutes media for the run.
 
 ---
 
