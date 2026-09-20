@@ -38,6 +38,7 @@ object AppModule {
     fun init(context: Context) {
         appContext = context.applicationContext
         com.morton.trucknav.nav.NavLog.init(appContext)
+        com.morton.trucknav.nav.Favorites.init(appContext)
         MapStyles.init(appContext)
         assets.start()
     }

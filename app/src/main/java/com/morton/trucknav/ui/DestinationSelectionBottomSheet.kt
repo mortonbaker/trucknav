@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.morton.trucknav.DestinationSelection
@@ -86,6 +88,16 @@ private fun DestinationSelectionBottomSheetContent(
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp).heightIn(min = 48.dp),
     ) {
       Text(stringResource(R.string.start_navigation))
+    }
+    // Save this place for one-tap use later.
+    var saved by androidx.compose.runtime.remember(destination) { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val label = destination.label?.takeUnless { it.isBlank() } ?: stringResource(R.string.dropped_pin_title)
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+      for ((kind, title) in listOf(com.morton.trucknav.nav.Favorites.HOME to "Save as Home", com.morton.trucknav.nav.Favorites.WORK to "Save as Work", com.morton.trucknav.nav.Favorites.PLACE to "Save place")) {
+        OutlinedButton(onClick = { com.morton.trucknav.nav.Favorites.save(label, destination.coordinate, kind); saved = kind }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+          Text(if (saved == kind) "Saved" else title, maxLines = 1)
+        }
+      }
     }
     OutlinedButton(
         onClick = onClose,

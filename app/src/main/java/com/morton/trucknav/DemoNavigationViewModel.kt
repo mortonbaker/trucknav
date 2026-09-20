@@ -201,6 +201,7 @@ class DemoNavigationViewModel(
 
   fun startNavigation(destination: GeographicCoordinate, name: String? = null) {
     val gen = ++navGeneration
+    com.morton.trucknav.nav.Favorites.noteDestination(name, destination)
     com.morton.trucknav.nav.NavLog.log("start", "gen=$gen to=$destination name=$name caller=${com.morton.trucknav.nav.NavLog.caller()}")
     viewModelScope.launch(Dispatchers.IO) {
       // TODO: Fail gracefully
