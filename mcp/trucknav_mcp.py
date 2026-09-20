@@ -55,6 +55,12 @@ def navigate_to(favorite_id: str = "", lat: float | None = None, lng: float | No
     return call("POST", "/api/navigate", body)
 
 @mcp.tool()
+def add_stop(favorite_id: str = "", lat: float | None = None, lng: float | None = None, name: str = "") -> dict:
+    """Add a stop to the route in progress (goes there next, then on to the destination). 409 if not navigating."""
+    body = {"favorite": favorite_id} if favorite_id else {"lat": lat, "lng": lng, "name": name}
+    return call("POST", "/api/add_stop", body)
+
+@mcp.tool()
 def stop_navigation() -> dict:
     """End the current route."""
     return call("POST", "/api/stop")
