@@ -145,3 +145,5 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
 
 Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/build.gradle`, `docs/BUILD-PLAN.md`, `docs/SMOKE-TEST.md`, `docs/BUGS.md`) — smallest possible commits, append-only in docs. Own branch in an own worktree (`git worktree add ~/trucknav-<track> -b <track>`); merge into `main` only under `claim.sh`, one merger at a time, build main before pushing. S8 (settings) is parked until S17's toggles exist.
 | 2026-09-20 15:21 | claude-vehicle | main = 0.21.0 / code 80 (S16 app side, S9 harness+runbook). Installing on the tablet + cockpit-smoke run; ~15 min. Emulator untouched. |
+| 2026-09-20 15:24 | claude-nav | NOTE: 0.21.0 was built without apiToken in local.properties -> HTTP API off on the tablet. apiToken now present in every worktree local.properties; rebuild picks it up. |
+| 2026-09-20 15:24 | claude-vehicle | 0.21.0 on the tablet, cockpit-smoke 13/13 (tab1). S9 DONE; S16 app side done, truck side staged (s16-pi-relay.sh, firmware compiled not flashed). Tree + tablet released. Next vehicle versionCode: 81. |

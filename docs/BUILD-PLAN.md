@@ -27,7 +27,7 @@ Order of work from here:
 | S17 | Navigation, finished | medium | 17.1 single navigator, 17.2 lettered search, 17.3 overview, 17.4 mute DONE 2026-09-20 (0.18.0); left: alert toggles UI, favorites, preview/alternates, API+MCP. |
 | S4 | YouTube history, no Live/Shorts | small + sign-in | Needs the operator's Google sign-in on the tablet. |
 | S5 | Books offline downloads | medium | DONE v0.17.1. |
-| S9 | Harness + runbook | small | Fold the S0–S3 scripts into one `cockpit-smoke.sh`; the skill draft exists in the handoff. |
+| S9 | Harness + runbook | small | DONE 0.21.0. |
 | S7 | Look and feel (icon, palette, typography) | small | Cosmetic; after the behaviour is right. |
 | S6 | On-device routing | large | Two sessions; biggest single win for no-signal driving. |
 | S8 | Settings pane | small | Operator said later. |
@@ -227,7 +227,7 @@ Implementation on `ui-s7` (2026-09-20), physical acceptance pending. The pre-edi
 
 ---
 
-## S9 — Test harness and runbook (small)
+## S9 — Test harness and runbook (small) — DONE 2026-09-20, 0.21.0 (cockpit-smoke.sh 13/13 on emulator and tablet; RUNBOOK.md)
 
 **Goal:** anyone (or any session) can prove the app works in ten minutes.
 
@@ -237,6 +237,25 @@ Implementation on `ui-s7` (2026-09-20), physical acceptance pending. The pre-edi
 
 **Done when**
 - Both scripts run end to end from a clean shell on atlas01 with no hands on the tablet and print only PASS lines on the current build (any FAIL is a real defect, not a harness bug).
+
+---
+
+### S16 / S9 status — 2026-09-20 15:30, claude-vehicle, 0.21.0 / versionCode 80 on the tablet
+
+**S9 — DONE.** `docs/cockpit-smoke.sh <tag>` (fail-closed, 13 rows, emulator via `SERIAL=emulator-5554` or tablet under lease) and `docs/RUNBOOK.md`. Evidence: `~/evidence/cockpit-emu6/` (emulator, 13/13 PASS) and `~/evidence/cockpit-tab1/` (tablet 0.21.0, 13/13 PASS, hands off). `docs/books-smoke.sh` D8 is superseded by `s5-books-offline.sh` (USB-only rule); D9 stays in `d9.sh`. Harness lessons baked in: poll for labels instead of fixed sleeps, retry taps (the emulator drops them under load), clear the stale `/sdcard/ui.xml` before every dump, the YouTube pane has no label (check for a WebView), the overlay window is 4 lines deep in `dumpsys window windows`.
+
+**S16 — app side shipped, truck side staged (truck was powered off all afternoon: Pi last seen 14:10, board not on any reachable network).**
+
+| Piece | State |
+|---|---|
+| Vehicle pane: all eight relays | shipped. Named relays first-class; unassigned pins dim with "Pin xx · unassigned" so wiring can be tested from the seat; naming a pin in `4runner.yaml` promotes it |
+| Starlink is critical power | shipped. Tap = ON, **hold = OFF** on the strip cell, the Power pane row, and the Vehicle tile; captions say so |
+| Hotspot path tablet↔Pi | shipped app side: `VenusClient` tries the tailnet address (2.5 s), then the cached LAN address, then sweeps its own /24 for a broker on 1883; the Power pane shows `Pi · <host> (tailnet|lan)` or the reason it is offline. On an isolating hotspot only the tailnet route exists, so the Pi's own tailscale health is what matters (checked by `s16-pi-relay.sh`) |
+| B8 SOC `--` | app now also listens on `battery/+/Soc`. Expected root cause: no battery monitor on VE.Direct (SmartShunt is BLE-only until cabled), in which case Venus has no SOC to publish and `--` is correct. `s16-pi-relay.sh` prints the `AutoSelectedBatteryService` answer to settle it |
+| ESP32 firmware | `~/esphome-builds/4runner.yaml` (= HA `/config/esphome/4runner.yaml`, synced) adds `wifi_info` (SSID/IP/BSSID), `wifi_signal`, `uptime`, `status`. Validated and **compiled** (`firmware.bin` 807 KB, 14:49). **Not flashed** — operator: only with a healthy battery; the board reboots and Relay 1 restores ON. Flash: `~/.local/bin/esphome upload 4runner.yaml --device <board-ip>` from atlas01 with the board on `Everything`, or HA's ESPHome Builder |
+| Pi `relay.sh` / Node-RED end-to-end, board sensors, SOC topics, Pi tailscale | `docs/s16-pi-relay.sh <tag>` — one command from atlas01 when the truck is powered; prints a PASS/FAIL table, touches nothing on the tablet |
+
+S16 done-criteria still open (need the truck): strip Starlink cell OFF→ON→OFF with the dish off away from home; `relay.sh` < 5 s cold / < 1 s warm; Everylink visible to the Pi within 5 min.
 
 ---
 
