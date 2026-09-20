@@ -23,6 +23,8 @@ sh am force-stop $P; sleep 1; sh am start -n $P/.MainActivity >/dev/null; sleep 
 [ "$(has "Got it")" -ge 1 ] && tapd "Got it"; sleep 1
 # start from a known state: no panel, no keyboard, no focus in the field
 [ "$(has "Close destinations")" -ge 1 ] && tapd "Close destinations"
+# the map alone on screen: a pane open beside it narrows the tile column (that layout is checked separately)
+~/bin/ui.sh $S tapx Map >/dev/null 2>&1
 sh dumpsys input_method | grep -q "mInputShown=true" && sh input keyevent KEYCODE_BACK; sleep 1
 adb -s $S logcat -c -b crash
 # seed: a fixture favorite and a recent, through the API (both files the panel reads)
@@ -59,9 +61,11 @@ left=$(api http://127.0.0.1:18784/api/favorites | python3 -c "import json,sys; p
 row "4 hold to remove" "hold shows Remove; tap removes; API count drops by one" "remove after ${r}s, gone=$gone, api $nfav -> $left" "$a" "hold.png"
 
 # 5 one tap = go from a tile, End works
-tapd "Close destinations"; sleep 1; tapd "Go: Home" || tapd "Go: Work"; nav=$(waitfor "End Navigation" 15); shot go
-[ "$nav" != none ] && a=PASS || a=FAIL
-row "5 tile go" "Home/Work tile starts navigation (End Navigation within 15 s)" "${nav}s" "$a" "go.png"
+# Work first: Home may be 0 min away (tablet at home), which is nowhere to navigate to
+tapd "Close destinations"; sleep 1; tapd "Go: Work" || tapd "Go: Home"; pv=$(waitfor "Start navigation" 12); shot preview
+tapd "Start navigation"; nav=$(waitfor "End Navigation" 15); shot go
+[ "$pv" != none ] && [ "$nav" != none ] && a=PASS || a=FAIL
+row "5 tile go" "tile -> route preview within 12 s -> Start -> End Navigation within 15 s (S17.7 flow)" "preview ${pv}s, navigating ${nav}s" "$a" "preview.png go.png"
 tapd "End Navigation"; sleep 2
 
 # 6 focused empty search shows Recents; typing hides the panel

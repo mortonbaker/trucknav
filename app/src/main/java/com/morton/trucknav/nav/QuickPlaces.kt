@@ -3,6 +3,7 @@ package com.morton.trucknav.nav
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -68,13 +69,22 @@ fun QuickPlaces(
         val targets = listOfNotNull(home?.coordinate, work?.coordinate)
         etas = if (userLocation == null || targets.isEmpty()) emptyList() else withContext(Dispatchers.IO) { matrixEtas(userLocation, targets) } ?: emptyList()
     }
-    Row(modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Tile(Icons.Filled.Home, if (home != null) "Home" else "Set Home", if (home != null) etaText(etas.getOrNull(0)) else "", desc = if (home != null) "Go: Home" else "Set Home",
-            onTap = { if (home != null) onGo("Home", home.coordinate) else onSet(Favorites.HOME) })
-        Tile(Icons.Filled.Work, if (work != null) "Work" else "Set Work", if (work != null) etaText(etas.getOrNull(if (home != null) 1 else 0)) else "", desc = if (work != null) "Go: Work" else "Set Work",
-            onTap = { if (work != null) onGo("Work", work.coordinate) else onSet(Favorites.WORK) })
-        Tile(Icons.Filled.Star, "Favorites", if (places == 1) "1 place" else "$places places", desc = "Open favorites", onTap = { onOpen(DestTab.Favorites) })
-        Tile(Icons.Filled.History, "Recents", recents.firstOrNull()?.name ?: "", desc = "Open recents", onTap = { onOpen(DestTab.Recents) })
+    val homeTile: @Composable RowScope.() -> Unit = { Tile(Icons.Filled.Home, if (home != null) "Home" else "Set Home", if (home != null) etaText(etas.getOrNull(0)) else "", desc = if (home != null) "Go: Home" else "Set Home",
+        onTap = { if (home != null) onGo("Home", home.coordinate) else onSet(Favorites.HOME) }) }
+    val workTile: @Composable RowScope.() -> Unit = { Tile(Icons.Filled.Work, if (work != null) "Work" else "Set Work", if (work != null) etaText(etas.getOrNull(if (home != null) 1 else 0)) else "", desc = if (work != null) "Go: Work" else "Set Work",
+        onTap = { if (work != null) onGo("Work", work.coordinate) else onSet(Favorites.WORK) }) }
+    val favTile: @Composable RowScope.() -> Unit = { Tile(Icons.Filled.Star, "Favorites", if (places == 1) "1 place" else "$places places", desc = "Open favorites", onTap = { onOpen(DestTab.Favorites) }) }
+    val recTile: @Composable RowScope.() -> Unit = { Tile(Icons.Filled.History, "Recents", recents.firstOrNull()?.name ?: "", desc = "Open recents", onTap = { onOpen(DestTab.Recents) }) }
+    // Four across when the column is wide enough for whole words; two rows of two beside an open pane.
+    BoxWithConstraints(modifier.fillMaxWidth().padding(top = 8.dp)) {
+        if (maxWidth >= 480.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { homeTile(); workTile(); favTile(); recTile() }
+        } else {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { homeTile(); workTile() }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { favTile(); recTile() }
+            }
+        }
     }
 }
 
