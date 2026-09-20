@@ -59,19 +59,20 @@ for k in "${!SIZE[@]}"; do
 done
 grep -q manifest.json "$E/d1-ls.txt" || ok=0
 row "D1 download" "4 track files, each size == server file size; manifest.json present" "took $((T1-T0)) s;$detail" "$([ $ok = 1 ] && echo PASS || echo FAIL)" "d1-ls.txt"
-sleep 2; shot d1-library-after
-dump > "$E/d1-ui.xml"; grep -q 'content-desc="Downloaded"' "$E/d1-ui.xml" && b=PASS || b=FAIL
-row "D1b badge + storage line" "check badge on the cover; 'Downloads: N used, M free' text" "$(grep -oE 'text="Downloads: [^"]+"' "$E/d1-ui.xml" | head -1)" "$b" "d1-library-after.png"
-
 # --- D2 plays from local files ----------------------------------------------------------
 svc SET_SPEED --ef speed 1.0
-tap "$TITLE"; sleep 8
+tap "$TITLE" || { tap Back; svc PLAY --es book_id $BOOK; }; sleep 8
 src=$(adb -s $S logcat -d -s BooksPlayer | grep -oE 'opened .*source=[a-z]+ session=[a-z]+' | tail -1)
 shot d2-pane; dump > "$E/d2-ui.xml"
 echo "$src" | grep -q "source=local" && a=PASS || a=FAIL
 row "D2 local source" "player log says source=local for the downloaded book" "$src" "$a" "d2-pane.png"
 grep -q 'text="Delete download"' "$E/d2-ui.xml" && a=PASS || a=FAIL
 row "D2b pane buttons" "'Downloaded' + 'Delete download' on the pane" "$(grep -oE 'text="Downloaded[^"]*"' "$E/d2-ui.xml" | head -1)" "$a" "d2-ui.xml"
+# The book is now in Continue, so its badge is on screen.
+tap Library; sleep 5; shot d1-continue-after; dump > "$E/d1-ui.xml"
+grep -q 'content-desc="Downloaded"' "$E/d1-ui.xml" && b=PASS || b=FAIL
+row "D1b badge + storage line" "check badge on the cover; 'Downloads: N used, M free' text" "$(grep -oE 'text="Downloads: [^"]+"' "$E/d1-ui.xml" | head -1)" "$b" "d1-continue-after.png"
+tap Back; sleep 2
 
 # --- D3 five-minute cut across a track boundary ------------------------------------------
 svc SEEK_TO --el book_ms $(awk -v o="${OFF[1]}" 'BEGIN{printf "%d", (o-60)*1000}')   # 60 s before track 2
@@ -126,7 +127,7 @@ tap "Play/Pause"; sleep 1; tap "Delete download"; sleep 3
 sh ls $FILES >/dev/null 2>&1 && a=FAIL || a=PASS
 shot d5-after-delete
 row "D5a delete" "book directory gone" "ls $FILES -> $(sh ls $FILES 2>&1 | tr -d '\r' | head -1)" "$a" "d5-after-delete.png"
-tap Library; sleep 6; tap "$TITLE"; sleep 8
+tap Library; sleep 5; tap "$TITLE" || { tap Back; svc PLAY --es book_id $BOOK; }; sleep 8
 src=$(adb -s $S logcat -d -s BooksPlayer | grep -oE 'opened .*source=[a-z]+ session=[a-z]+' | tail -1)
 echo "$src" | grep -q "source=stream" && a=PASS || a=FAIL
 row "D5b stream fallback" "reopening the book streams (source=stream)" "$src" "$a" "booksplayer-logcat.txt"

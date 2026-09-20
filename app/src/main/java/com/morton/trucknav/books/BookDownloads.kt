@@ -14,9 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import okhttp3.Request
 import java.io.File
 
@@ -29,8 +34,24 @@ import java.io.File
 object BookDownloads {
     private const val TAG = "BookDownloads"
 
-    @Serializable data class Track(val index: Int, val startOffset: Double, val duration: Double, val file: String)
-    @Serializable data class Manifest(val id: String, val title: String, val author: String?, val duration: Double, val tracks: List<Track>)
+    // Hand-rolled JSON, like AbsClient: this project does not apply the serialization compiler plugin.
+    data class Track(val index: Int, val startOffset: Double, val duration: Double, val file: String)
+    data class Manifest(val id: String, val title: String, val author: String?, val duration: Double, val tracks: List<Track>) {
+        fun toJson(): String = buildJsonObject {
+            put("id", id); put("title", title); author?.let { put("author", it) }; put("duration", duration)
+            put("tracks", buildJsonArray { tracks.forEach { t -> add(buildJsonObject { put("index", t.index); put("startOffset", t.startOffset); put("duration", t.duration); put("file", t.file) }) } })
+        }.toString()
+        companion object {
+            fun parse(text: String): Manifest {
+                val o = Json.parseToJsonElement(text).jsonObject
+                return Manifest(
+                    o["id"]!!.jsonPrimitive.content, o["title"]!!.jsonPrimitive.content, o["author"]?.jsonPrimitive?.content,
+                    o["duration"]!!.jsonPrimitive.content.toDouble(),
+                    o["tracks"]!!.jsonArray.map { val t = it.jsonObject; Track(t["index"]!!.jsonPrimitive.content.toInt(), t["startOffset"]!!.jsonPrimitive.content.toDouble(), t["duration"]!!.jsonPrimitive.content.toDouble(), t["file"]!!.jsonPrimitive.content) },
+                )
+            }
+        }
+    }
 
     sealed class State {
         data class Downloading(val fraction: Float, val bytes: Long) : State()
@@ -42,7 +63,6 @@ object BookDownloads {
     private val jobs = HashMap<String, Job>()
     private val _states = MutableStateFlow<Map<String, State>>(emptyMap())
     val states: StateFlow<Map<String, State>> = _states
-    private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     fun root(ctx: Context): File = File(ctx.getExternalFilesDir(null), "books").apply { mkdirs() }
     fun dir(ctx: Context, id: String): File = File(root(ctx), id)
@@ -55,7 +75,7 @@ object BookDownloads {
         val f = manifestFile(ctx, id)
         if (!f.exists()) return null
         return try {
-            val m = json.decodeFromString<Manifest>(f.readText())
+            val m = Manifest.parse(f.readText())
             if (m.tracks.all { File(dir(ctx, id), it.file).let { t -> t.exists() && t.length() > 0 } }) m else null
         } catch (e: Exception) { Log.w(TAG, "manifest $id: $e"); null }
     }
@@ -106,7 +126,7 @@ object BookDownloads {
             bytesDone += got
             Log.i(TAG, "track ${t.index}/$total: $got bytes -> ${out.name}")
         }
-        manifestFile(ctx, id).writeText(json.encodeToString(Manifest(id, s.title, s.author, s.duration, tracks)))
+        manifestFile(ctx, id).writeText(Manifest(id, s.title, s.author, s.duration, tracks).toJson())
         _states.update { it + (id to State.Done(dirSize(d))) }
         Log.i(TAG, "complete $id: ${s.title}, $total tracks, ${dirSize(d)} bytes")
     }
