@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,8 +59,8 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
     val r by relay.state.collectAsState()
     val stale = !s.connected || System.currentTimeMillis() - s.updatedAt > 120_000
     Row(
-        modifier.fillMaxWidth().height(56.dp).background(Color(0xFF10141a)).padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
+        modifier.fillMaxWidth().height(56.dp).background(Color(0xFF10141a)).horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Cell("SOC", s.socShown?.let { "${it.roundToInt()}%" } ?: "--", if (s.lowSoc) Bad else Color.White, big = true)
         Cell("Batt", "${v(s.voltage)}  ${a(s.current)}", if ((s.current ?: 0.0) > 0.2) Good else if ((s.current ?: 0.0) < -0.2) Warn else Color.White)
@@ -72,11 +74,11 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
             Modifier.clip(RoundedCornerShape(10.dp)).background(if (r.on(RelayClient.STARLINK) == true) Color(0xFF1f5f8b) else Color(0xFF1a2028))
                 // Tap turns the dish on; switching it OFF cuts the truck's network, so that takes a hold.
                 .combinedClickable(enabled = !r.busy, onClick = { if (r.on(RelayClient.STARLINK) != true) relay.set(RelayClient.STARLINK, true) }, onLongClick = { relay.set(RelayClient.STARLINK, false) })
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp).padding(horizontal = 10.dp, vertical = 4.dp)
                 .semantics { contentDescription = "Starlink " + (if (r.on(RelayClient.STARLINK) == true) "ON" else if (r.on(RelayClient.STARLINK) == false) "OFF" else "unknown") },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Starlink", color = Muted, fontSize = 11.sp, lineHeight = 12.sp)
+            Text("Starlink", color = Muted, fontSize = 13.sp, lineHeight = 16.sp)
             Text(if (r.busy) "..." else if (r.on(RelayClient.STARLINK) == true) "ON" else if (r.on(RelayClient.STARLINK) == false) "OFF" else "--", color = if (r.busy) Warn else if (r.on(RelayClient.STARLINK) == null) Bad else Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 18.sp)
         }
     }
@@ -85,7 +87,7 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
 @Composable
 private fun Cell(label: String, value: String, color: Color, big: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = Muted, fontSize = 11.sp, lineHeight = 12.sp)
+        Text(label, color = Muted, fontSize = 13.sp, lineHeight = 16.sp)
         Text(value, color = color, fontSize = if (big) 22.sp else 16.sp, fontWeight = FontWeight.Bold, lineHeight = if (big) 24.sp else 18.sp, maxLines = 1)
     }
 }
@@ -130,7 +132,7 @@ fun PowerPane(client: VenusClient, relay: RelayClient, modifier: Modifier = Modi
                                 r.on(RelayClient.STARLINK) == true -> "on · hold to switch off · ${r.host}"
                                 else -> "off · tap to switch on · ${r.host}"
                             },
-                            color = if (r.on(RelayClient.STARLINK) == null && !r.busy) Bad else Muted, fontSize = 13.sp,
+                            color = if (r.on(RelayClient.STARLINK) == null && !r.busy) Bad else Muted, fontSize = 16.sp,
                         )
                     }
                 }

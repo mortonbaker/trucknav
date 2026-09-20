@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,12 +88,21 @@ fun NotNavigatingOverlay(
           },
           contentAlignment = Alignment.TopCenter,
       ) {
-        PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
-          viewModel.selectDestination(
-              location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
-              label = hit.label,
-              origin = DestinationSelectionOrigin.SearchResult,
-          )
+        Column {
+          PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
+            viewModel.selectDestination(
+                location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
+                label = hit.label,
+                origin = DestinationSelectionOrigin.SearchResult,
+            )
+          }
+          val scene by viewModel.sceneState.collectAsState()
+          if (scene.searchResults.isEmpty()) {
+            com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
+              com.morton.trucknav.nav.NavLog.log("quick", "go ${q.name}")
+              viewModel.startNavigation(q.coordinate, q.name)
+            }
+          }
         }
       }
     }

@@ -1,36 +1,18 @@
 package com.morton.trucknav.ui.theme
-
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-
-// Set of Material typography styles to start with
-val Typography =
-    Typography(
-        bodyLarge =
-            TextStyle(
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                letterSpacing = 0.5.sp,
-            )
-        /* Other default text styles to override
-        titleLarge = TextStyle(
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.Normal,
-            fontSize = 22.sp,
-            lineHeight = 28.sp,
-            letterSpacing = 0.sp
-        ),
-        labelSmall = TextStyle(
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            letterSpacing = 0.5.sp
-        )
-        */
-    )
+private fun type(size: Int, line: Int, weight: FontWeight = FontWeight.Normal) = TextStyle(
+    fontFamily = FontFamily.Default, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight,
+)
+val Typography = Typography(
+    displayLarge = type(56,64), displayMedium = type(44,52), displaySmall = type(36,44),
+    headlineLarge = type(32,40), headlineMedium = type(28,36), headlineSmall = type(24,32),
+    titleLarge = type(24,30,FontWeight.Medium), titleMedium = type(20,26,FontWeight.Medium),
+    titleSmall = type(18,24,FontWeight.Medium),
+    bodyLarge = type(16,22), bodyMedium = type(16,22), bodySmall = type(16,22),
+    labelLarge = type(16,20,FontWeight.Medium), labelMedium = type(14,18,FontWeight.Medium),
+    labelSmall = type(14,18),
+)

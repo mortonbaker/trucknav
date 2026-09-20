@@ -97,7 +97,7 @@ fun PhotonSearch(
         val withDist = raw.map { h -> h.copy(distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
         hits = withDist.sortedBy { it.distanceM ?: Double.MAX_VALUE }.take(6).mapIndexed { i, h -> h.copy(letter = ('A' + i).toString()) }
         onResults(hits)
-        val etas = withContext(Dispatchers.IO) { matrixEta(userLocation, hits) }
+        val etas = withContext(Dispatchers.IO) { com.morton.trucknav.nav.matrixEtas(userLocation, hits.map { it.coordinate }) }
         if (etas != null) { hits = hits.mapIndexed { i, h -> h.copy(etaS = etas.getOrNull(i)) }; onResults(hits) }
     }
 
@@ -130,7 +130,7 @@ fun PhotonSearch(
                     )
                 }
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = ""; hits = emptyList(); onResults(emptyList()); dismiss() }, modifier = Modifier.size(44.dp)) {
+                    IconButton(onClick = { query = ""; hits = emptyList(); onResults(emptyList()); dismiss() }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
@@ -171,19 +171,6 @@ private fun haversine(a: GeographicCoordinate, b: GeographicCoordinate): Double 
     val r = 6371000.0; val dLat = Math.toRadians(b.lat - a.lat); val dLng = Math.toRadians(b.lng - a.lng)
     val h = Math.sin(dLat / 2).let { it * it } + Math.cos(Math.toRadians(a.lat)) * Math.cos(Math.toRadians(b.lat)) * Math.sin(dLng / 2).let { it * it }
     return 2 * r * Math.asin(Math.sqrt(h))
-}
-
-// One Valhalla matrix call for all results: drive time from the user to each.
-private fun matrixEta(from: GeographicCoordinate?, hits: List<PhotonHit>): List<Double?>? {
-    if (from == null || hits.isEmpty()) return null
-    return try {
-        val base = AppModule.valhallaUrl.removeSuffix("/route").removeSuffix("/")
-        val targets = hits.joinToString(",") { "{\"lat\":${it.coordinate.lat},\"lon\":${it.coordinate.lng}}" }
-        val body = "{\"sources\":[{\"lat\":${from.lat},\"lon\":${from.lng}}],\"targets\":[$targets],\"costing\":\"auto\"}"
-        val res = AppModule.okHttp.newCall(Request.Builder().url("$base/sources_to_targets").post(body.toRequestBody("application/json".toMediaType())).build()).execute().use { it.body?.string() } ?: return null
-        val row = Json.parseToJsonElement(res).jsonObject["sources_to_targets"]!!.jsonArray[0].jsonArray
-        row.map { it.jsonObject["time"]?.jsonPrimitive?.content?.toDoubleOrNull() }
-    } catch (e: Exception) { android.util.Log.w("PhotonSearch", "matrix: $e"); null }
 }
 
 private fun photon(q: String, near: GeographicCoordinate?): List<PhotonHit> = try {

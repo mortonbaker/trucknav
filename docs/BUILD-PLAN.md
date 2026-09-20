@@ -202,6 +202,8 @@ Additional defect found by run4/run5, fixed in 0.17.1: `registerDefaultNetworkCa
 
 ## S7 — Look and feel (small)
 
+Implementation on `ui-s7` (2026-09-20), physical acceptance pending. The pre-edit [control contract](S7-CONTROLS.md) defines preserved behavior and V1–V6 acceptance; [workflow](SLICE-WORKFLOW.md) defines lifecycle gates. Coverage expands the original six-pane wording to all seven current panes, both orientations and font scales 1.0/1.3. See [implementation receipt](S7-IMPLEMENTATION.md). This is not a DONE marker.
+
 **Goal:** it looks like one product.
 
 - App icon: adaptive icon, Material `navigation` glyph on the rail's dark, no default robot.

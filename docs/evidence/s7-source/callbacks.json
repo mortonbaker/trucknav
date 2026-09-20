@@ -1,0 +1,258 @@
+{
+  "baseline": "a09515f",
+  "kind": "source callback regression, not runtime proof",
+  "rows": [
+    {
+      "file": "app/src/main/java/com/morton/trucknav/AppModule.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/Apps.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/CockpitScreen.kt",
+      "callbacks": 3,
+      "status": "PASS",
+      "baseline_sha256": "3dca66cfd3ed1ff79be5d540c5a5f6cf5eefb8b73f3063617236e64c196e5ffb",
+      "candidate_sha256": "3dca66cfd3ed1ff79be5d540c5a5f6cf5eefb8b73f3063617236e64c196e5ffb"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/DemoConfigs.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/DemoNavigationScene.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/DemoNavigationViewModel.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/LocalAssetServer.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/MainActivity.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/MapStyle.kt",
+      "callbacks": 2,
+      "status": "PASS",
+      "baseline_sha256": "3634c45b2d215e8858162b749400819f5ef326061d286d590704ed9b7e56dc31",
+      "candidate_sha256": "3634c45b2d215e8858162b749400819f5ef326061d286d590704ed9b7e56dc31"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/NotNavigatingOverlay.kt",
+      "callbacks": 2,
+      "status": "PASS",
+      "baseline_sha256": "4f4ad7dd5fc3ab3998e08d498d096568e0d30c476f34b1d24d246ad790b76cd3",
+      "candidate_sha256": "4f4ad7dd5fc3ab3998e08d498d096568e0d30c476f34b1d24d246ad790b76cd3"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/PhotonSearch.kt",
+      "callbacks": 3,
+      "status": "PASS",
+      "baseline_sha256": "19e01dee4070c7f253caa97a30e7820c542a99d00b8c298ff69ff6a1bec58afb",
+      "candidate_sha256": "19e01dee4070c7f253caa97a30e7820c542a99d00b8c298ff69ff6a1bec58afb"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/StatusStrip.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/VehiclePuck.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/books/BookDownloads.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/books/BooksPlayerService.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/AbsClient.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/BooksBrowser.kt",
+      "callbacks": 5,
+      "status": "PASS",
+      "baseline_sha256": "3437540b2944314d5df17e96a194ed59684415e7bdf6c0aa143311cb030be966",
+      "candidate_sha256": "3437540b2944314d5df17e96a194ed59684415e7bdf6c0aa143311cb030be966"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/MediaPane.kt",
+      "callbacks": 3,
+      "status": "PASS",
+      "baseline_sha256": "65116bdbee04cacc6c1712203cc5a0000a002a731dd3864f243dc0fb36b06329",
+      "candidate_sha256": "65116bdbee04cacc6c1712203cc5a0000a002a731dd3864f243dc0fb36b06329"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/MediaSource.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/NowPlayingPane.kt",
+      "callbacks": 12,
+      "status": "PASS",
+      "baseline_sha256": "e7a0d12a71ab05e27fe30bf982d9aee248b335210c7555affd12d7fa240fc4c0",
+      "candidate_sha256": "e7a0d12a71ab05e27fe30bf982d9aee248b335210c7555affd12d7fa240fc4c0"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/SessionWatcher.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/media/YouTubePane.kt",
+      "callbacks": 4,
+      "status": "PASS",
+      "baseline_sha256": "4a21cf41a34345805d66eaba789c3b785c88a1a8f0fd19eefa3f18a0f8e615dc",
+      "candidate_sha256": "4a21cf41a34345805d66eaba789c3b785c88a1a8f0fd19eefa3f18a0f8e615dc"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/nav/NavLog.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/overlay/BootReceiver.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/overlay/MediaListener.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/overlay/OverlayService.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/power/PowerPane.kt",
+      "callbacks": 3,
+      "status": "PASS",
+      "baseline_sha256": "0b7d82068f763d8a991a6a7b4a467b5e965ea5c025788d725664aa817722734b",
+      "candidate_sha256": "0b7d82068f763d8a991a6a7b4a467b5e965ea5c025788d725664aa817722734b"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/power/RelayClient.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/power/VehiclePane.kt",
+      "callbacks": 1,
+      "status": "PASS",
+      "baseline_sha256": "0bae1aaf33374d6db75315a896be527dd18521b118ffe99a38b38a9d0d3bcfdc",
+      "candidate_sha256": "0bae1aaf33374d6db75315a896be527dd18521b118ffe99a38b38a9d0d3bcfdc"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/power/VenusClient.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/support/InitialSimulatedLocation.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/ui/DestinationSelectionBottomSheet.kt",
+      "callbacks": 2,
+      "status": "PASS",
+      "baseline_sha256": "145e36d1dbed591aa774b9ddf5404f9340aec2c7868d48cba0214d1ea82c7728",
+      "candidate_sha256": "145e36d1dbed591aa774b9ddf5404f9340aec2c7868d48cba0214d1ea82c7728"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/ui/DestinationSelectionCameraEffects.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/ui/theme/Color.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/ui/theme/Theme.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "app/src/main/java/com/morton/trucknav/ui/theme/Type.kt",
+      "callbacks": 0,
+      "status": "PASS",
+      "baseline_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

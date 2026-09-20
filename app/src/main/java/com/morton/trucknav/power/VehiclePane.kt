@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -53,16 +54,16 @@ fun VehiclePane(relay: RelayClient, modifier: Modifier = Modifier) {
     val shown = r.switches.sortedBy { it.name.contains("(Pin") }
     Card(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Vehicle", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Column(Modifier.fillMaxWidth()) {
+                Text("Vehicle", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Text(
                     when { r.busy -> "working..."; r.reachable -> "relay board · ${r.host}"; else -> r.error ?: "relay board not reachable" },
-                    color = if (r.reachable || r.busy) Color(0xFF9aa4b2) else Color(0xFFff6b6b), fontSize = 13.sp,
+                    color = if (r.reachable || r.busy) Color(0xFF9aa4b2) else Color(0xFFff6b6b), fontSize = 16.sp,
                 )
             }
             Spacer(Modifier.height(10.dp))
             if (!r.reachable && !r.busy) {
-                Text("Join the same Wi-Fi as the relay board (Everylink when the dish is up, or its own AP \"4Runner Relay Remote\").", color = Color(0xFF9aa4b2), fontSize = 15.sp)
+                Text("Join the same Wi-Fi as the relay board (Everylink when the dish is up, or its own AP \"4Runner Relay Remote\").", color = Color(0xFF9aa4b2), fontSize = 16.sp)
             }
             LazyVerticalGrid(columns = GridCells.Adaptive(180.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(shown, key = { it.id }) { sw ->
@@ -92,7 +93,7 @@ private fun Tile(sw: RelaySwitch, enabled: Boolean, critical: Boolean, onTap: ()
     val dim = unassigned(sw)
     val fg = if (dim) Color(0xFF9aa4b2) else Color.White
     Column(
-        Modifier.height(112.dp).clip(RoundedCornerShape(18.dp))
+        Modifier.heightIn(min = 112.dp).clip(RoundedCornerShape(18.dp))
             .background(if (sw.on) Color(0xFF1f5f8b) else if (dim) Color(0xFF141920) else Color(0xFF1a2028))
             .combinedClickable(enabled = enabled, onClick = onTap, onLongClick = onHold).padding(14.dp)
             .semantics { contentDescription = "${label(sw)} ${if (sw.on) "ON" else "OFF"}" },

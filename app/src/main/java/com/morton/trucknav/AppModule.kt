@@ -34,10 +34,13 @@ object AppModule {
     val valhallaUrl: String get() = BuildConfig.valhallaUrl
     val photonUrl: String get() = BuildConfig.photonUrl
 
+    val api: com.morton.trucknav.nav.ApiServer by lazy { com.morton.trucknav.nav.ApiServer() }
     val assets: LocalAssetServer by lazy { LocalAssetServer(appContext.getExternalFilesDir(null)!!) }
     fun init(context: Context) {
         appContext = context.applicationContext
         com.morton.trucknav.nav.NavLog.init(appContext)
+        com.morton.trucknav.nav.Favorites.init(appContext)
+        api.start()
         MapStyles.init(appContext)
         assets.start()
     }
