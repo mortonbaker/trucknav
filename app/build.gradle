@@ -7,7 +7,6 @@ android {
     namespace "com.morton.trucknav"
     compileSdk = 36
     defaultConfig {
-        ndk { abiFilters "arm64-v8a" }   // Tab A7 Lite; drop the x86/mips/v7a dead weight
         applicationId "com.morton.trucknav"
         minSdk 29
         targetSdk 36
@@ -43,6 +42,7 @@ android {
     }
     buildTypes {
         release {
+            ndk { abiFilters "arm64-v8a" }   // the tablet; debug keeps every ABI for the x86_64 emulator
             // R8 + arm64-only: 130 MB -> ~35 MB, which matters when the push
             // rides a phone hotspot over the tailnet.
             minifyEnabled true
