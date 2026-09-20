@@ -84,6 +84,12 @@ class DemoNavigationViewModel(
 
   init {
     com.morton.trucknav.nav.NavLog.watch(navigationUiState)
+    // While we navigate, a foreign navigator that appears is stopped at once.
+    viewModelScope.launch {
+      com.morton.trucknav.nav.NavGuard.foreign.collect { f ->
+        if (f != null && navigationUiState.value.isNavigating()) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is navigating")
+      }
+    }
     viewModelScope.launch {
       _hasLocationPermission
           .flatMapLatest { hasPermission ->
@@ -215,6 +221,9 @@ class DemoNavigationViewModel(
       if (simulated.value) {
         locationProvider.enableSimulationOn(route)
       }
+
+      // Android Auto rule: one navigator. We are the host, so we win.
+      if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
 
       if (navigationUiState.value.isNavigating()) {
         ferrostarCore.replaceRoute(route = route)
