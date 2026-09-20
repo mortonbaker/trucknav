@@ -129,3 +129,5 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
   Leave the player paused at the end, confirm with `dumpsys media_session`, and say so in the receipt.
 - Playback that a test starts is the test's responsibility until it is stopped. No "leave it running
   and check later".
+| 2026-09-20 14:18 | claude-nav | tablet lease taken: 0.17.5 install + NavGuard test |
+| 2026-09-20 14:22 | claude-nav | tablet released; 0.17.5 installed; OsmAnd disabled (pm disable-user) — re-enable with pm enable if ever needed |
