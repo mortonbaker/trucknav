@@ -131,3 +131,5 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
   and check later".
 | 2026-09-20 14:18 | claude-nav | tablet lease taken: 0.17.5 install + NavGuard test |
 | 2026-09-20 14:22 | claude-nav | tablet released; 0.17.5 installed; OsmAnd disabled (pm disable-user) — re-enable with pm enable if ever needed |
+| 2026-09-20 14:24 | claude-nav | merged nav-s17 into main = 0.18.0 (books S5 + nav S17.1-4), pushed to GitHub; APK in apk-drop, NOT yet installed on the tablet |
+| 2026-09-20 14:27 | claude-nav | 0.18.0 installed on the tablet (home app); S17 results appended |

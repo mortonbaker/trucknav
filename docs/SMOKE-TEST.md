@@ -211,3 +211,21 @@ Harness note: `ui.sh tap` substring-matched the wrong node more than once ("Map"
 - Vehicle pane (rail item): tiles built from the board's switch list; unreachable state renders "relay board not on this network" with the join hint (verified on the phone hotspot with the board in AP mode). Power strip Starlink cell now reads through the same client.
 - Observed: on the phone hotspot the tablet cannot reach the Venus Pi either over the tailnet (100.112.123.30, 100 % loss) or the hotspot LAN (10.61.176.141) — hotspot client isolation suspected; power strip shows `Link offline`. Tracked under S16.
 - R8/arm64 build: 26 MB, 75 s push over the hotspot.
+
+### 2026-09-20 — v0.16.0–0.17.5 → merged as 0.18.0 (S17.1–S17.4, emulator-first)
+
+Emulator: AVD `trucknav-tab` on atlas01 (Android 15 x86_64, 1340×800 @ 210 dpi, debug build, basemap pushed + chowned, `-dns-server 100.100.100.100`). Tablet: only for the OsmAnd test (USB, lease held).
+
+| Item | Criterion | Measured | Result |
+|---|---|---|---|
+| S17.1 single navigator (tablet) | foreign navigator detected; manual Stop works; TruckNav start stops it | OsmAnd's paused route (Home → Hulen St, 31.4 mi / 37 min = the "32 mi / 40 min" ghost) resumed → banner "OsmAnd is navigating · Stop OsmAnd" → tap → `NavigationService` count 4 → 0, banner gone (`guard stopping OsmAnd: driver tapped Stop`, `foreign navigator gone`). Auto path: OsmAnd resumed, TruckNav route started → OsmAnd service count 0. OsmAnd then `pm disable-user`. | PASS |
+| S17.2 search results | letters match badges; rows show distance + drive time; all rows visible; sorted by distance | "Whole Foods": rows A–E, `7.0 mi · 15 min`, `14 mi · 24 min`, `18 mi`, `18 mi · 26 min`, `22 mi · 33 min` (one ETA missing = Valhalla matrix null for that target); row bounds 174–269, 270–365, 366–461 (was 95/10/0 px before the grid fix); badges A–F on the map; landscape list-left, camera fits all badges + puck | PASS |
+| S17.3 route overview | whole route inside the padded viewport | Ferrostar/MapLibre fit: route bbox x 754–1339 (clipped) and, with zero insets, x 130–1339 (still clipped, zoom ~2 levels too deep). Hand-computed Web-Mercator fit: route bbox x 802–1276, y 288–460 inside viewport x 749–1298, y 69–683 → inside = True, 86 % width fill (`docs/emu-overview.sh`) | PASS |
+| S17.4 mute | muted → no TTS **and** no audio-focus request | before: muted leg = 3 instructions, 0 synthesis, **3 focus requests** (music ducked). after VoiceGate: unmuted leg 5/5/5; muted leg 3 instructions, 3 dropped, 0 synthesis, 0 focus | PASS |
+| crashes | 0 | 0 on emulator and tablet | PASS |
+
+Fake drive: `~/route-wholefoods.txt` (Valhalla polyline6 → 322 fixes) replayed with `emu.sh drive`; instructions fired at real geometry ("Turn left onto Oak Knoll Road", "… US Highway 377"…).
+
+Infra fixes on the way: atlas01 `/etc/resolv.conf` was immutable with the home router first → tailnet names never resolved (the "MagicDNS flaky" mystery); now `100.100.100.100` first. Emulator FUSE makes shell-pushed dirs unreadable to the app → `emu.sh assets` chowns after push.
+
+Open from S17: alert-class toggles UI (gate exists: `VoiceGate.disabledClasses`), favorites/Home/Work, route preview with ETA/alternates, favorites API + MCP, auto night mode, speed limits, add-a-stop, arrival flow.

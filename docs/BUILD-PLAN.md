@@ -24,7 +24,7 @@ Order of work from here:
 | # | Slice | Size | Why this order |
 |---|---|---|---|
 | S11 | Nav event log (B0) | small | DONE v0.14.0. |
-| S17 | Navigation, finished: no foreign navigator, alert prefs, favorites (Home/Work), favorites API + MCP | medium | Operator: before any other slice. |
+| S17 | Navigation, finished | medium | 17.1 single navigator, 17.2 lettered search, 17.3 overview, 17.4 mute DONE 2026-09-20 (0.18.0); left: alert toggles UI, favorites, preview/alternates, API+MCP. |
 | S4 | YouTube history, no Live/Shorts | small + sign-in | Needs the operator's Google sign-in on the tablet. |
 | S5 | Books offline downloads | medium | DONE v0.17.1. |
 | S9 | Harness + runbook | small | Fold the S0–S3 scripts into one `cockpit-smoke.sh`; the skill draft exists in the handoff. |
