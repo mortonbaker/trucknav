@@ -1,6 +1,6 @@
 # TruckNav — build plan for the remaining features, sliced for one Opus session each
 
-Written 2026-09-20 after the audit of v0.9.1. Each slice is self-contained: a fresh session with only this file, the repo, and the tablet can pick it up, finish it, and prove it. Slices are ordered by the operator's priority; S0 first because it fixes what the audit found broken.
+Consolidated handoff map with every slice, done-criteria and the smoke plan: `docs/PLAN.md`. Written 2026-09-20 after the audit of v0.9.1. Each slice is self-contained: a fresh session with only this file, the repo, and the tablet can pick it up, finish it, and prove it. Slices are ordered by the operator's priority; S0 first because it fixes what the audit found broken.
 
 ## Common context every slice needs
 
@@ -37,6 +37,9 @@ Order of work from here:
 | S18 | Voice commands (STT + intents, Spark fallback) | large | After S17. |
 | S19 | Trip bar + stops (Google/Tesla style) | medium | NEXT (operator 2026-09-20): next-stop name in the bar, stop list, numbered stop pins, stop arrival + auto-continue, remove a stop. |
 | S20 | Usable by others: settings screen, no hardcoded places, vehicle upload API/MCP | medium | Operator 2026-09-20. Absorbs S8. Home/Work/vehicle/URLs/token all runtime settings; first-run flow; README setup. |
+| S21 | Search along route (category chips, detour minutes, pick = next stop) | medium | Operator 2026-09-20. Spec in `docs/PLAN.md`. |
+| S22 | Traffic (TomTom flow overlay + traffic ETA on candidates) | medium + key | Operator 2026-09-20. Spec + sources in `docs/PLAN.md`. |
+| S23 | Map control placement (corners / right stack per AA, Maps, Tesla) | small | Operator 2026-09-20. Spec in `docs/PLAN.md`. |
 
 Housekeeping, not slices: DHCP reservation / `manual_ip` for the relay board; adopt it into HA; the tablet's Venus MQTT link showed `MqttException` while on the phone hotspot on 2026-09-20 (Pi reachable over the tailnet at that moment — investigate under S16).
 
