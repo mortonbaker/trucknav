@@ -287,3 +287,7 @@ Scripts: `docs/emu-favorites.sh` (`E=emulator-5556`), `docs/emu-arrival.sh`, `do
 Screens: `~/arrival-a2-card.png` (card over the map, puck at Whole Foods), `~/addstop-s3-results.png` (search + lettered results over the navigating layout), `~/addstop-s3-after.png` (route via Kroger, 20 m / 14 mi, following camera).
 
 Open from S17: night-mode field switch; `docs/emu-favorites.sh` still hard-codes the Whole Foods result label; the "Add stop" search card covers the Layers/Add-stop buttons while open (cosmetic).
+
+## S20 Settings contract — 2026-09-20, 0.31.1 / code 119
+
+Separate merge 05f6151 (contract 4ad1978). Main debug build passed. Emulator-5554 cockpit smoke **13/13**, 44 local tile requests, search 1 s, navigation first attempt, 0 crashes, playback stopped. Evidence: ~/evidence/cockpit-s20-contract-main. Settings API read/write, masking, provider validation, 401 authentication and request log redaction passed. No tablet install for this prerequisite.

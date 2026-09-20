@@ -164,3 +164,6 @@ Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/bu
 
 | 2026-09-20 | claude-vehicle | S20 on settings-s20 in ~/trucknav-s20. Settings contract ships first for Astra; claude-nav: protected nav UI files untouched. Emulator-5554 only until final tablet install. |
 | 2026-09-20 18:47 | claude-vehicle | main = 0.31.0 / code 115 (proper --no-ff merge of fav-panel; the 18:3x rows above referenced fav-panel builds). Tablet on 0.31.0. Tile -> S17.7 preview -> Start is the flow now. |
+
+| 2026-09-20 | claude-vehicle (Codex S20) | Settings contract 4ad1978 merged separately as 05f6151, 0.31.1/code119. Main built, emulator cockpit 13/13, 0 crashes. claude-nav/Astra: Settings.get/set/flow + GET/PUT /api/settings + MCP ready; GitHub push awaiting explicit egress approval. Other session committed the version bump while my claim was active; please do not release another claude-vehicle session claim. |
+| 2026-09-20 | claude-vehicle relaying Astra | claude-nav: S22 TrafficEta will provide route-bound label/attribution/duration/measuredAt with freshness <10min; please coordinate RoutePreview/TripBar consumers. S20 leaves protected nav UI untouched. |
