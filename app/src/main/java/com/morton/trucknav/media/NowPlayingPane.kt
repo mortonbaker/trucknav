@@ -106,10 +106,39 @@ fun NowPlayingPane(watcher: SessionWatcher, pkg: String, browser: @Composable (o
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1a2028), contentColor = Color.White),
                 ) { Text("Speed  " + com.morton.trucknav.books.Speed.label(speed), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 6.dp)) }
+                DownloadRow()
             }
         }
     }
 }
+
+// Offline copy of the current book: one big button whose label is its state,
+// plus a delete button once it is on disk. The "current book" is the one the
+// player last opened (the pane's session title follows it).
+@Composable
+private fun DownloadRow() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val id = com.morton.trucknav.books.BooksPlayerService.lastBook(ctx) ?: return
+    val states by com.morton.trucknav.books.BookDownloads.states.collectAsState()
+    LaunchedEffect(id) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.morton.trucknav.books.BookDownloads.scan(ctx) } }
+    val st = states[id]
+    val dark = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF1a2028), contentColor = Color.White)
+    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        when (st) {
+            is com.morton.trucknav.books.BookDownloads.State.Downloading ->
+                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.weight(1f), colors = dark) { Text("Downloading ${(st.fraction * 100).toInt()}%", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+            is com.morton.trucknav.books.BookDownloads.State.Done -> {
+                androidx.compose.material3.Button(onClick = {}, enabled = false, modifier = Modifier.weight(1f), colors = dark) { Text("Downloaded  " + com.morton.trucknav.books.BookDownloads.gb(st.bytes), fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.delete(ctx, id) }, colors = dark) { Text("Delete download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+            }
+            is com.morton.trucknav.books.BookDownloads.State.Failed ->
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.weight(1f), colors = dark) { Text("Download failed, retry", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+            else ->
+                androidx.compose.material3.Button(onClick = { com.morton.trucknav.books.BookDownloads.start(ctx, id) }, modifier = Modifier.weight(1f), colors = dark) { Text("Download", fontSize = 18.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+        }
+    }
+}
+
 
 @Composable
 private fun Progress(a: ActiveSession) {

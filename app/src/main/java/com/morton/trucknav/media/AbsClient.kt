@@ -21,7 +21,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 // itself (covers, progress, library) and only asks the ABS app to *play*.
 data class Book(val id: String, val title: String, val author: String?, val coverUrl: String, val progress: Float?, val durationSec: Double?)
 data class AbsLibrary(val id: String, val name: String)
-data class AbsTrack(val index: Int, val startOffset: Double, val duration: Double, val contentUrl: String)
+data class AbsTrack(val index: Int, val startOffset: Double, val duration: Double, val contentUrl: String, val ext: String? = null)
 data class AbsPlaySession(val sessionId: String, val title: String, val author: String?, val coverUrl: String, val currentTime: Double, val duration: Double, val tracks: List<AbsTrack>)
 
 object AbsClient {
@@ -85,14 +85,16 @@ object AbsClient {
         } catch (e: Exception) { Log.w(TAG, "items: $e"); emptyList() }
     }
 
-    private suspend fun post(path: String, json: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun send(method: String, path: String, json: String): String? = withContext(Dispatchers.IO) {
         val t = token ?: login() ?: return@withContext null
         try {
-            val r = AppModule.okHttp.newCall(Request.Builder().url("$base$path").header("Authorization", "Bearer $t").post(json.toRequestBody("application/json".toMediaType())).build()).execute()
+            val body = json.toRequestBody("application/json".toMediaType())
+            val r = AppModule.okHttp.newCall(Request.Builder().url("$base$path").header("Authorization", "Bearer $t").method(method, body).build()).execute()
             if (r.code == 401) { token = null; return@withContext null }
             r.use { if (it.isSuccessful) (it.body?.string() ?: "") else null }
-        } catch (e: Exception) { Log.w(TAG, "post $path: $e"); null }
+        } catch (e: Exception) { Log.w(TAG, "$method $path: $e"); null }
     }
+    private suspend fun post(path: String, json: String) = send("POST", path, json)
 
     suspend fun openPlaySession(itemId: String): AbsPlaySession? {
         val body = """{"deviceInfo":{"clientName":"TruckNav","deviceId":"trucknav-tablet","manufacturer":"Samsung","model":"SM-T220"},"supportedMimeTypes":["audio/mpeg","audio/mp4","audio/aac","audio/flac","audio/ogg","audio/x-m4b"],"mediaPlayer":"exoplayer","forceDirectPlay":true}"""
@@ -107,13 +109,24 @@ object AbsClient {
                 cover(itemId),
                 o["currentTime"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0,
                 o["duration"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0,
-                o["audioTracks"]!!.jsonArray.map { t -> val x = t.jsonObject; AbsTrack(x["index"]!!.jsonPrimitive.content.toInt(), x["startOffset"]!!.jsonPrimitive.content.toDouble(), x["duration"]!!.jsonPrimitive.content.toDouble(), x["contentUrl"]!!.jsonPrimitive.content) },
+                o["audioTracks"]!!.jsonArray.map { t ->
+                    val x = t.jsonObject
+                    val ext = x["metadata"]?.jsonObject?.get("ext")?.jsonPrimitive?.content
+                        ?: x["mimeType"]?.jsonPrimitive?.content?.let { m -> when (m) { "audio/mpeg" -> ".mp3"; "audio/mp4", "audio/x-m4b" -> ".m4b"; "audio/flac" -> ".flac"; "audio/ogg" -> ".ogg"; "audio/aac" -> ".aac"; else -> null } }
+                    AbsTrack(x["index"]!!.jsonPrimitive.content.toInt(), x["startOffset"]!!.jsonPrimitive.content.toDouble(), x["duration"]!!.jsonPrimitive.content.toDouble(), x["contentUrl"]!!.jsonPrimitive.content, ext)
+                },
             )
         } catch (e: Exception) { Log.w(TAG, "play session parse: $e"); null }
     }
 
-    suspend fun sync(sessionId: String, currentTime: Double, timeListened: Double, duration: Double) {
-        post("/api/session/$sessionId/sync", """{"currentTime":$currentTime,"timeListened":$timeListened,"duration":$duration}""")
+    // True when the server took it. False = queue it for later (dead zone).
+    suspend fun sync(sessionId: String, currentTime: Double, timeListened: Double, duration: Double): Boolean =
+        post("/api/session/$sessionId/sync", """{"currentTime":$currentTime,"timeListened":$timeListened,"duration":$duration}""") != null
+
+    // Session-less progress write, for positions reached while offline.
+    suspend fun patchProgress(itemId: String, currentTime: Double, duration: Double): Boolean {
+        val p = if (duration > 0) (currentTime / duration).coerceIn(0.0, 1.0) else 0.0
+        return send("PATCH", "/api/me/progress/$itemId", """{"currentTime":$currentTime,"duration":$duration,"progress":$p,"isFinished":false}""") != null
     }
 
     suspend fun close(sessionId: String) { post("/api/session/$sessionId/close", "{}") }
