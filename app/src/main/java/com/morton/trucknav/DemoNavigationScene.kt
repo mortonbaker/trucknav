@@ -169,6 +169,26 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   val mapViewInsets = remember { ClampedInsets() }
   mapViewInsets.limitStart = with(density) { (mapSize.width.toDp() / 2) + 16.dp }
 
+  // Route overview, done by hand. Ferrostar asks MapLibre to fit the route's
+  // bbox with its insets, but the tracking camera's persistent padding leaks
+  // into that fit and the result is zoomed ~2 levels too deep (measured on the
+  // emulator: 11 mi route, east end off screen even with zero insets). So when
+  // the mode flips to OVERVIEW we compute the camera ourselves: zoom that fits
+  // the route + puck into the viewport left free by the turn card / arrival bar.
+  LaunchedEffect(navigationMapState.cameraMode) {
+    if (navigationMapState.cameraMode != com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.OVERVIEW) return@LaunchedEffect
+    kotlinx.coroutines.delay(60)   // let Ferrostar's own animation start, then supersede it
+    val st = viewModel.navigationUiState.value
+    val pts = (st.routeGeometry ?: emptyList()) + listOfNotNull(st.location?.coordinates)
+    if (pts.size < 2 || mapSize.width == 0) return@LaunchedEffect
+    val mapW = with(density) { mapSize.width.toDp() }; val mapH = with(density) { mapSize.height.toDp() }
+    val pad = if (landscape) PaddingValues(start = mapW * 0.5f + 16.dp, top = 24.dp, end = 32.dp, bottom = 32.dp)
+              else PaddingValues(start = 24.dp, top = 150.dp, end = 24.dp, bottom = 200.dp)
+    val cam = fitCamera(pts, mapW, mapH, pad)
+    navigationMapState.cameraState.animateTo(cam, duration = kotlin.time.Duration.parse("600ms"))
+    com.morton.trucknav.nav.NavLog.log("overview", "fit ${pts.size} pts zoom=${"%.2f".format(cam.zoom)} pad=$pad")
+  }
+
   // Rotation recreates the activity and the camera comes back in browsing mode
   // (top-down, centred) even though navigation is still running. Put it back in
   // the navigating camera whenever the orientation changes mid-route.
@@ -291,4 +311,22 @@ private class ClampedInsets : androidx.compose.runtime.MutableState<PaddingValue
     set(v) { raw.value = v }
   override fun component1(): PaddingValues = value
   override fun component2(): (PaddingValues) -> Unit = { value = it }
+}
+
+// Web-Mercator fit: the zoom at which the points' bbox fills the padded
+// viewport (MapLibre: world = 512 dp * 2^zoom), target = bbox centre.
+private fun fitCamera(pts: List<uniffi.ferrostar.GeographicCoordinate>, mapW: androidx.compose.ui.unit.Dp, mapH: androidx.compose.ui.unit.Dp, pad: PaddingValues): org.maplibre.compose.camera.CameraPosition {
+  val ld = androidx.compose.ui.unit.LayoutDirection.Ltr
+  val w = (mapW - pad.calculateStartPadding(ld) - pad.calculateEndPadding(ld)).value.toDouble().coerceAtLeast(40.0)
+  val h = (mapH - pad.calculateTopPadding() - pad.calculateBottomPadding()).value.toDouble().coerceAtLeast(40.0)
+  fun mercY(lat: Double): Double { val r = Math.toRadians(lat.coerceIn(-85.0, 85.0)); return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 }
+  val west = pts.minOf { it.lng }; val east = pts.maxOf { it.lng }
+  val yTop = pts.minOf { mercY(it.lat) }; val yBot = pts.maxOf { mercY(it.lat) }
+  val dx = ((east - west) / 360.0).coerceAtLeast(1e-6); val dy = (yBot - yTop).coerceAtLeast(1e-6)
+  val zoom = minOf(Math.log(w / (dx * 512)) / Math.log(2.0), Math.log(h / (dy * 512)) / Math.log(2.0)) - 0.15
+  val cy = (yTop + yBot) / 2
+  val lat = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1 - 2 * cy))))
+  return org.maplibre.compose.camera.CameraPosition(
+      target = org.maplibre.spatialk.geojson.Position(longitude = (west + east) / 2, latitude = lat),
+      zoom = zoom.coerceIn(3.0, 18.0), tilt = 0.0, bearing = 0.0, padding = pad)
 }
