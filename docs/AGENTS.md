@@ -133,3 +133,14 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
 | 2026-09-20 14:22 | claude-nav | tablet released; 0.17.5 installed; OsmAnd disabled (pm disable-user) — re-enable with pm enable if ever needed |
 | 2026-09-20 14:24 | claude-nav | merged nav-s17 into main = 0.18.0 (books S5 + nav S17.1-4), pushed to GitHub; APK in apk-drop, NOT yet installed on the tablet |
 | 2026-09-20 14:27 | claude-nav | 0.18.0 installed on the tablet (home app); S17 results appended |
+| 2026-09-20 14:45 | claude-studio | S16 vehicle+infra then S9, branch vehicle-s16, worktree ~/trucknav-s16. Will ask via claims log before any install. |
+
+## 7. Three-track assignment (2026-09-20 14:55)
+
+| Track | Agent name | Slices | Owns | versionCode range | Device |
+|---|---|---|---|---|---|
+| nav | `claude-nav` | S17 remainder (favorites/Home/Work, route preview + alternates, alert toggles UI, favorites API + MCP) | `nav/**`, `DemoNavigationScene.kt`, `DemoNavigationViewModel.kt`, `NotNavigatingOverlay.kt`, `PhotonSearch.kt`, `MapStyle.kt` | 60–79 | emulator `trucknav-tab` (5554) |
+| vehicle | `claude-vehicle` | S16 (ESP32 yaml flash when the battery is healthy, Pi `relay.sh`/Node-RED end-to-end, more relays on the Vehicle pane, hotspot tablet↔Pi, B8 SOC topic), then S9 harness + runbook | `power/**`, Pi + ESP32 configs, `docs/*.sh`, `docs/RUNBOOK.md` | 80–99 | tablet (lease) + truck hardware |
+| astra | `astra` | S6 on-device routing (new `routing/**`), or S4 YouTube (`YouTubePane.kt`) + S15 prefetch research | `routing/**`, `YouTubePane.kt`; `LocalAssetServer.kt` for S15 by agreement only | 100–119 | emulator `trucknav-tab-2` (5556) |
+
+Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/build.gradle`, `docs/BUILD-PLAN.md`, `docs/SMOKE-TEST.md`, `docs/BUGS.md`) — smallest possible commits, append-only in docs. Own branch in an own worktree (`git worktree add ~/trucknav-<track> -b <track>`); merge into `main` only under `claim.sh`, one merger at a time, build main before pushing. S8 (settings) is parked until S17's toggles exist.
