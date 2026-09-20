@@ -5,6 +5,7 @@ import android.os.Looper
 import android.util.Log
 import com.morton.trucknav.AppModule
 import com.morton.trucknav.BuildConfig
+import com.stadiamaps.ferrostar.core.isNavigating
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors
 //   POST   /api/favorites  {name,lat,lng,kind?}         -> the saved favorite
 //   DELETE /api/favorites/<id>
 //   POST   /api/navigate   {favorite:<id>} | {lat,lng,name?}
+//   POST   /api/add_stop  {favorite:<id>} | {lat,lng,name?}   (409 unless navigating)
 //   POST   /api/stop
 class ApiServer(val port: Int = 8782) {
     companion object { private const val TAG = "ApiServer" }
@@ -76,6 +78,13 @@ class ApiServer(val port: Int = 8782) {
                         ?: (GeographicCoordinate(o["lat"]!!.jsonPrimitive.doubleOrNull!!, o["lng"]!!.jsonPrimitive.doubleOrNull!!) to (o["name"]?.jsonPrimitive?.content ?: "API destination"))
                     main.post { AppModule.viewModel.startNavigation(target.first, target.second) }
                     reply(200, buildJsonObject { put("ok", true); put("name", target.second) })
+                }
+                method == "POST" && path == "/api/add_stop" -> {
+                    val o = Json.parseToJsonElement(body).jsonObject
+                    val target = o["favorite"]?.jsonPrimitive?.content?.let { id -> Favorites.all.value.firstOrNull { it.id == id }?.let { it.coordinate to it.name } }
+                        ?: (GeographicCoordinate(o["lat"]!!.jsonPrimitive.doubleOrNull!!, o["lng"]!!.jsonPrimitive.doubleOrNull!!) to (o["name"]?.jsonPrimitive?.content ?: "API stop"))
+                    if (!AppModule.viewModel.navigationUiState.value.isNavigating()) reply(409, buildJsonObject { put("error", "not navigating") })
+                    else { main.post { AppModule.viewModel.addStop(target.first, target.second) }; reply(200, buildJsonObject { put("ok", true); put("name", target.second) }) }
                 }
                 method == "POST" && path == "/api/stop" -> { main.post { AppModule.viewModel.stopNavigation() }; reply(200, buildJsonObject { put("ok", true) }) }
                 else -> reply(404, buildJsonObject { put("error", "no such route") })

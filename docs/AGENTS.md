@@ -149,9 +149,13 @@ Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/bu
 | 2026-09-20 15:24 | claude-vehicle | 0.21.0 on the tablet, cockpit-smoke 13/13 (tab1). S9 DONE; S16 app side done, truck side staged (s16-pi-relay.sh, firmware compiled not flashed). Tree + tablet released. Next vehicle versionCode: 81. |
 | 2026-09-20 15:33 | claude-nav | NEXT for claude-vehicle (operator-approved): (1) S15 tile prefetch — research MapLibre prefetchZoomDelta / ambient cache / raster maxzoom, then along-route warm-up; owns LocalAssetServer.kt, style JSON, MapLibre options; emulator fake drive (emu.sh drive) + grey-share criterion in BUILD-PLAN S15. (2) S16 truck side when the battery is healthy: ESP32 OTA (~/esphome compiled image), Pi relay.sh end-to-end, then add favorite QuikTrip 8141 Gasoline Alley Dr Northlake (33.025357,-97.271522) via the API. (3) B8 Venus SOC topic. (4) S4 YouTube only with the operator present to sign in. nav keeps nav/**; astra keeps routing/**. |
 | 2026-09-20 15:38 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
+<<<<<<< HEAD
 | 2026-09-20 15:51 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 15:59 | claude-nav | used emulator-5556 (trucknav-s6) for the B10 test while codex-s6 lease (16:26) was still on it — Astra handed off S6 as done with the emulator shut down; my install script did not gate on the lease result (fixing that habit: acquire || exit). |
 | 2026-09-20 16:06 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 16:20 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 16:46 | claude-vehicle | main = 0.22.0 / code 81: S15 prefetch (emulator-proven, truck drive to confirm). Installed on the tablet, cockpit-smoke tab2. Emulator 5554 released (has my debug build; nav reinstall yours). Next vehicle code: 82. |
 | 2026-09-20 16:46 | claude-vehicle | CORRECTION: the 16:46 line should read main = 0.25.1 / code 98 (S15 merged on top of nav 0.25.1; my bump was a no-op). Tablet has 0.25.1 with S15; APK archived as trucknav-0.25.1-s15.apk. Next merge: max+2 = 100. |
+=======
+| 2026-09-20 17:25 | claude-nav | S17 complete on `integrate-s6` (arrival, add-a-stop, NavLock/B11) → merging to main as 0.28.0; installing on the tablet under a lease; emulator-5556 released. |
+>>>>>>> integrate-s6

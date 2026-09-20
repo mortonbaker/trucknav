@@ -209,6 +209,8 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   // (top-down, centred) even though navigation is still running. Put it back in
   // the navigating camera whenever the orientation changes mid-route.
   val uiState by viewModel.navigationUiState.collectAsState()
+  // Search-result fits leave the camera free; after a stop is added (or the add is cancelled) go back to following.
+  LaunchedEffect(sceneState.recenter) { if (sceneState.recenter > 0) navigationMapState.recenter(isNavigating = uiState.isNavigating()) }
   LaunchedEffect(landscape) {
     if (uiState.isNavigating()) {
       Log.i("DemoNavigationScene", "orientation changed while navigating: cameraMode=${navigationMapState.cameraMode}, recentering")

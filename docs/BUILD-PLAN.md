@@ -24,7 +24,7 @@ Order of work from here:
 | # | Slice | Size | Why this order |
 |---|---|---|---|
 | S11 | Nav event log (B0) | small | DONE v0.14.0. |
-| S17 | Navigation, finished | medium | 17.1 single navigator, 17.2 lettered search, 17.3 overview, 17.4 mute DONE 2026-09-20 (0.18.0); left: alert toggles UI, favorites, preview/alternates, API+MCP. |
+| S17 | Navigation, finished | medium | DONE 2026-09-20 (0.28.0): 17.1 single navigator, 17.2 lettered search, 17.3 overview, 17.4 mute, 17.5 favorites + API/MCP, 17.6 GPS gate, 17.7 preview/alternates, 17.8 voice classes + auto night, 17.9 speed limits, 17.10 arrival, 17.11 add-a-stop. Field-open: night switch at real dusk. |
 | S4 | YouTube history, no Live/Shorts | small + sign-in | Needs the operator's Google sign-in on the tablet. |
 | S5 | Books offline downloads | medium | DONE v0.17.1. |
 | S9 | Harness + runbook | small | DONE 0.21.0. |
@@ -347,6 +347,10 @@ Criterion (grey < 1 % for 5 min): PASS in every mode. The discriminating number 
 - **Favorites**: Home, Work + named places, stored in `files/favorites.json`; one-tap tiles at the top of the search results while not navigating ("Home 12 min"), long-press a result / the dropped pin → "Save as…". 76 dp tiles, Material icons.
 - **Favorites API + MCP**: the app runs a small HTTP API on the tablet (loopback + LAN, token in `local.properties`): `GET/POST/DELETE /api/favorites`, `POST /api/navigate {lat,lng|favorite}`, `GET /api/state` (navigating, route summary, position). An MCP server on atlas01 wraps it (`trucknav-mcp`, tools: list_favorites, add_favorite, navigate_to, status) so favorites can be added by an agent when the tablet is on the tailnet/home LAN.
 **Done when** (a) `dumpsys audio` never shows a non-TruckNav navigation-guidance focus during a 20-minute drive; (b) each alert class toggled off produces no TTS and no banner on a drive that passes at least one instance; (c) Home tile: tap → route starts within 3 s, ETA shown; (d) `curl -H "Authorization: Bearer …" http://<tablet>:8782/api/favorites` lists what the UI shows, and an MCP `add_favorite` appears on the tablet within 5 s.
+- **Arrival** (17.10): `TripState.Complete` → card "You have arrived · <name>" with Done, arrival spoken through the voice gate if the last step's utterance never triggered, navigation ends after 10 s. Ferrostar leaves the session and foreground service up on Complete; we end it.
+- **Add a stop** (17.11): pin-plus button under Layers while navigating → the search box opens under the instruction card → pick → route now → stop → (earlier stops) → destination replaces the trip via `replaceRoute`; camera returns to following. `POST /api/add_stop` and MCP `add_stop` do the same (409 when idle). A stop is a via point (WaypointWithinRange 100 m); no pause at the stop.
+- **Core lock** (B11): `NavLock` serialises every FerrostarCore mutation with every fix delivered to it (`LockedLocationProvider`); without it a `replaceRoute` racing `onLocationUpdated` restores the discarded route.
+**Status 2026-09-20:** all of the above DONE and measured on the emulator (`docs/SMOKE-TEST.md` "S17.5–S17.11"); tablet has 0.28.0.
 
 ## S18 — Voice (large, later)
 Push-to-talk / wake word → on-device STT (Vosk/whisper.cpp small) with a home fallback (Spark over the tailnet) → intents: navigate to <favorite|place>, toggle <relay>, play <book|music>, style <x>, mute. Not before S17.

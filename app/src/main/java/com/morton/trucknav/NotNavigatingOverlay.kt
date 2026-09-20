@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.AddLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,8 +56,17 @@ fun NotNavigatingOverlay(
   InnerGridView(
       modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
       centerStart = {
-        NavigationUIButton(onClick = { showStyles = true }, buttonSize = DpSize(56.dp, 56.dp)) {
-          Icon(LayersIcon, contentDescription = "Map style")
+        val scene by viewModel.sceneState.collectAsState()
+        Column {
+          NavigationUIButton(onClick = { showStyles = true }, buttonSize = DpSize(56.dp, 56.dp)) {
+            Icon(LayersIcon, contentDescription = "Map style")
+          }
+          if (uiState.isNavigating()) {
+            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
+            NavigationUIButton(onClick = { viewModel.setAddingStop(!scene.addingStop) }, buttonSize = DpSize(56.dp, 56.dp)) {
+              Icon(androidx.compose.material.icons.Icons.Filled.AddLocation, contentDescription = "Add stop")
+            }
+          }
         }
       },
       center = {
@@ -77,6 +87,21 @@ fun NotNavigatingOverlay(
   )
   if (showStyles) MapStyleSheet(onDismiss = { showStyles = false })
 
+  val sceneNow by viewModel.sceneState.collectAsState()
+  if (uiState.isNavigating() && sceneNow.addingStop) {
+    // Add a stop: the same search box, below the instruction card.
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    Box(modifier.fillMaxSize().padding(top = if (landscape) 176.dp else 200.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
+      Column(Modifier.fillMaxWidth(if (landscape) 0.58f else 1f)) {
+        PhotonSearch(userLocation = uiState.location?.coordinates ?: location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
+          viewModel.setSearchResults(emptyList())
+          viewModel.addStop(hit.coordinate, hit.label)
+        }
+        Text("Pick a stop on the way to your destination", color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
+            modifier = Modifier.padding(start = 20.dp, top = 6.dp), style = MaterialTheme.typography.bodyLarge.copy(shadow = Shadow(androidx.compose.ui.graphics.Color.Black, blurRadius = 6f)))
+      }
+    }
+  }
   if (!uiState.isNavigating()) {
     // Search sits in its own box so the results card can grow (the grid cell
     // below is a third of the map and was clipping every row after A).
@@ -89,6 +114,8 @@ fun NotNavigatingOverlay(
           contentAlignment = Alignment.TopCenter,
       ) {
         Column {
+          val scene by viewModel.sceneState.collectAsState()
+          scene.arrived?.let { a -> com.morton.trucknav.nav.ArrivalCard(a, onDone = { viewModel.dismissArrival() }); return@Column }
           PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
             viewModel.selectDestination(
                 location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
@@ -96,7 +123,6 @@ fun NotNavigatingOverlay(
                 origin = DestinationSelectionOrigin.SearchResult,
             )
           }
-          val scene by viewModel.sceneState.collectAsState()
           if (scene.searchResults.isEmpty()) {
             com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
               com.morton.trucknav.nav.NavLog.log("quick", "go ${q.name}")

@@ -18,6 +18,11 @@ Status: **alpha, one vehicle, built in the open.** Expect rough edges. See
   geocoding from [Photon](https://photon.komoot.io/). Five map styles (light, dark, satellite,
   hybrid, terrain). Your own vehicle is the location marker. Camera padding that respects
   the side panel and orientation. Search pill built to in-car contrast/size rules.
+  Lettered results with distance/ETA, route preview with alternates, favorites (Home/Work/places),
+  add-a-stop, arrival card, speed-limit sign, per-class voice toggles, auto day/night, a GPS
+  plausibility gate, and a guard that stops any other navigator so only one voice speaks.
+- **HTTP API + MCP** — `:8782` (bearer token): state, favorites, navigate, add_stop, stop;
+  `mcp/trucknav_mcp.py` wraps it so an agent can add places or start a route.
 - **Music** — controls any app's media session; browses [Finamp](https://github.com/jmshrv/finamp) (Jellyfin) through MediaBrowser.
 - **Audiobooks** — its own media3 player streaming from [Audiobookshelf](https://www.audiobookshelf.org/) with
   progress sync, ±30 s, and a 1.0–2.5× speed ladder.

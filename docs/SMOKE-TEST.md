@@ -267,3 +267,23 @@ Setup fixes: shell-pushed asset ownership repaired on emulator backing storage; 
 | Favorites via API after the merge | 8 favorites; tiles intact |
 
 Caveat found (B10): both routes started from a garbage GPS fix (4 satellites indoors: 33.1275,-96.2930, alt 32 896 m, 33 m/s), so absolute distances (60 mi / 49 mi) reflect that origin, not home (server says home→Costco 14.1 mi, home→Ted Polk 33.7 mi).
+
+### 2026-09-20 — v0.23–0.28.0 (S17.5–S17.11, emulator `trucknav-s6` / emulator-5556, debug x86_64)
+
+Scripts: `docs/emu-favorites.sh` (`E=emulator-5556`), `docs/emu-arrival.sh`, `docs/emu-addstop.sh`; the rest are one-off `ui.sh` + NavLog reads quoted below.
+
+| Criterion | Measured | Result |
+|---|---|---|
+| S17.5 favorites: Home saved from a result, tile with ETA, tap → route < 3 s, files exist | sheet "Home" → `Saved`; tile `Go: Home · 14 min`; tap → `state NAVIGATING` after 2 969 ms including ~1.5 s of uiautomator; `favorites.json` + `recent.json` written | PASS |
+| S17.6 GPS gate (B10): implausible fix rejected and logged, no route from it; a consistent run re-anchors | teleport home → Whole Foods: `gps rejected: jump 10983 m in 5 s (6852 km/h)` ×N, puck and route unchanged, strip "GPS weak"; `gps re-anchored after 5 consistent fixes` 26 s later. Sub-second fix bursts no longer count (`dt ≥ 1 s`) | PASS |
+| S17.7 route preview: ≥2 candidates with time/distance/via, Start uses the chosen one without a refetch | `preview 3 candidates: 14 min · 11.0 mi via East FM 407 \| 17 min · 11.1 mi via Cross Timbers Road \| 18 min · 10.3 mi via Justin Road`; Start → `start gen=1 preview route 11.0mi`, no second `routing` line | PASS |
+| S17.8 voice classes: class off → no TTS, logged | Layers sheet `Voice continue on` → `off`; route start → `voice class continue off, dropped: "Drive south on Smoky Oak Trail…"`, `GoogleTTSServiceImpl: Synthesis request` count 0; toggled back → `on` | PASS |
+| S17.8 auto night: sun elevation drives Light↔Dark | `night sun 30.8° -> day; style Light -> Light` every 60 s; dark below −6° (civil dusk). Real-sunset switch on the tablet not yet observed | PASS (math) / OPEN (field) |
+| S17.9 speed limit sign | Valhalla `shape_attributes.speed_limit/speed/length/time` on both adapters, lenient decoder: `annotated=9/10`; MUTCD sign 60 mph on US 377 on the tablet (0.26.1) | PASS |
+| S17.10 arrival: arrival spoken once, card with name + Done, no instruction after it, navigation ends by itself, End button gone, 0 crashes | run a2: `arrival name=Whole Foods Market… ending in 10s` → `voice arrival not yet spoken; saying "You have arrived at Whole Foods Market."` (TTS synthesis + nav focus request, focus abandoned 3 s later) → `state IDLE trip=Complete` → `stop gen=2 caller=…dismissArrival < onArrived` 10.0 s later. Card `Arrived`=1 `Done`=1 `End Navigation`=0; after: card gone, search back. spoken/visual after arrival = 0, crashes 0 | PASS |
+| B11 (found by the first arrival run): reroute at arrival brought the discarded 11 mi route back | before: reroute → 2-step 5 m route → ARRIVE spoken → 350 ms later `visual "Oak Knoll Road" stepIdx=1 … remaining=10.94mi steps=10` forever, End still up. after NavLock: run a2 had a reroute 6 s before arrival (`reroute alternates=1 → replace`) and the trip completed on the new route | PASS |
+| S17.11 add a stop: button while navigating, search opens under the card, pick → route now→stop→destination replaces the trip, camera back to following, second stop keeps the first, API 409 when idle | `Add stop`=1; field=1; pick Kroger Flower Mound → `route stop-add … distance=13.7mi steps=16` and `progress remaining=13.67mi eta=20min steps=16` (was 11.02 mi / 10 steps); recenter buttons after pick = 0; `POST /api/add_stop` QuikTrip → `distance=19.1mi steps=24` (Kroger kept: waypoints matched by distance, Valhalla snaps them); idle → 409; crashes 0 | PASS |
+
+Screens: `~/arrival-a2-card.png` (card over the map, puck at Whole Foods), `~/addstop-s3-results.png` (search + lettered results over the navigating layout), `~/addstop-s3-after.png` (route via Kroger, 20 m / 14 mi, following camera).
+
+Open from S17: night-mode field switch; `docs/emu-favorites.sh` still hard-codes the Whole Foods result label; the "Add stop" search card covers the Layers/Add-stop buttons while open (cosmetic).
