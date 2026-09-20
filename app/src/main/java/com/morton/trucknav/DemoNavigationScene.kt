@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -137,6 +139,15 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   }
   val navigationMapState = rememberNavigationMapState(navigationCameraOptions = cameraOptions)
 
+  // Ferrostar's landscape overlay writes map insets computed from the *screen*
+  // width (start = screenWidth/2 + 16 dp). With the side panel open our map is
+  // 60 % of the screen, so the route overview was being fitted into the
+  // right-hand sliver. This state clamps whatever the overlay writes to the
+  // map's own size; the overview button then fits the whole route between
+  // the turn card and the arrival bar.
+  val mapViewInsets = remember { ClampedInsets() }
+  mapViewInsets.limitStart = with(density) { (mapSize.width.toDp() / 2) + 16.dp }
+
   // Rotation recreates the activity and the camera comes back in browsing mode
   // (top-down, centred) even though navigation is still running. Put it back in
   // the navigating camera whenever the orientation changes mid-route.
@@ -161,6 +172,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       navigationMapState = navigationMapState,
       navigationCameraOptions = cameraOptions,
       showDefaultPuck = false,   // the 4Runner is the puck; see VehiclePuck.kt
+      mapViewInsets = mapViewInsets,
       viewModel = viewModel,
       config = VisualNavigationViewConfig.Default().withSpeedLimitStyle(SignageStyle.MUTCD),
       views =
@@ -236,3 +248,21 @@ internal fun droppedPinFeatureCollection(pin: GeographicCoordinate) =
             properties = buildJsonObject {},
         ),
     )
+
+// A MutableState that stores what Ferrostar writes but hands back a version
+// whose start inset never exceeds half the map (+16 dp) — see above.
+private class ClampedInsets : androidx.compose.runtime.MutableState<PaddingValues> {
+  private val raw = androidx.compose.runtime.mutableStateOf(PaddingValues(0.dp))
+  var limitStart: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Infinity
+  override var value: PaddingValues
+    get() {
+      val r = raw.value
+      val ld = androidx.compose.ui.unit.LayoutDirection.Ltr
+      val start = r.calculateStartPadding(ld)
+      return if (start <= limitStart) r
+      else PaddingValues(start = limitStart, top = r.calculateTopPadding(), end = r.calculateEndPadding(ld), bottom = r.calculateBottomPadding())
+    }
+    set(v) { raw.value = v }
+  override fun component1(): PaddingValues = value
+  override fun component2(): (PaddingValues) -> Unit = { value = it }
+}

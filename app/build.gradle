@@ -11,8 +11,8 @@ android {
         applicationId "com.morton.trucknav"
         minSdk 29
         targetSdk 36
-        versionCode 36
-        versionName "0.16.0"
+        versionCode 38
+        versionName "0.16.1"
         vectorDrawables { useSupportLibrary true }
         Properties properties = new Properties()
         def lp = project.rootProject.file("local.properties")
