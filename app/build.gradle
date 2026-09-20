@@ -10,14 +10,15 @@ android {
         applicationId "com.morton.trucknav"
         minSdk 29
         targetSdk 36
-        versionCode 64
-        versionName "0.19.2"
+        versionCode 66
+        versionName "0.20.0"
         vectorDrawables { useSupportLibrary true }
         Properties properties = new Properties()
         def lp = project.rootProject.file("local.properties")
         if (lp.exists()) properties.load(lp.newDataInputStream())
         buildConfigField "String", "valhallaUrl", "\"${properties.getProperty("valhallaUrl", "https://valhalla1.openstreetmap.de/route")}\""
         buildConfigField "String", "styleUrl", "\"${properties.getProperty("styleUrl", "https://demotiles.maplibre.org/style.json")}\""
+        buildConfigField "String", "apiToken", "\"${properties.getProperty("apiToken", "")}\""
         buildConfigField "String", "venusHost", "\"${properties.getProperty("venusHost", "")}\""
         // fallback map position before the first GPS fix; set homeLat/homeLng in local.properties
         buildConfigField "double", "homeLat", "${properties.getProperty("homeLat", "33.2148")}"

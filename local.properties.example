@@ -21,3 +21,6 @@ absPass=change-me
 # Fallback map position before the first GPS fix (defaults to Denton, TX)
 homeLat=33.2148
 homeLng=-97.1331
+
+# Token for the on-device HTTP API (port 8782) used by the trucknav MCP; leave empty to disable
+apiToken=
