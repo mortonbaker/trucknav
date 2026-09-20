@@ -59,10 +59,14 @@ object AppModule {
         FerrostarForegroundServiceManager(appContext, DefaultForegroundNotificationBuilder(appContext))
     }
 
+    val routing by lazy {
+        com.morton.trucknav.routing.HybridRouteProvider(appContext, valhallaUrl, okHttp,
+            log = { com.morton.trucknav.nav.NavLog.log("routing", it) })
+    }
+
     val ferrostarCore: FerrostarCore by lazy {
-        val options = mapOf("units" to "miles")
         val core = FerrostarCore(
-            WellKnownRouteProvider.Valhalla(valhallaUrl, "auto").withJsonOptions(options),
+            routing,
             httpClient = httpClient,
             locationProvider = locationProvider,
             foregroundServiceManager = foregroundServiceManager,
@@ -77,7 +81,7 @@ object AppModule {
         core.alternativeRouteProcessor = AlternativeRouteProcessor { it, routes ->
             val navigating = it.state.value.tripState is uniffi.ferrostar.TripState.Navigating
             com.morton.trucknav.nav.NavLog.log("reroute", "alternates=${routes.size} navigating=$navigating -> ${if (navigating && routes.isNotEmpty()) "replace" else "ignore"}")
-            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); it.replaceRoute(routes.first()) }
+            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); it.replaceRoute(routes.first()); viewModel.acceptRouteSource(routes.first()) }
         }
         core
     }

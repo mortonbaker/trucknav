@@ -198,46 +198,51 @@ class DemoNavigationViewModel(
   // Bumped on every start/stop; a route fetch only applies if nobody stopped
   // (or restarted) navigation while it was in flight.
   private var navGeneration = 0
+  private var routeJob: kotlinx.coroutines.Job? = null
+  private val _routeError = MutableStateFlow<String?>(null)
+  val routeError = _routeError.asStateFlow()
+  private val _routeSource = MutableStateFlow<com.morton.trucknav.routing.RouteSource?>(null)
+  val routeSource = _routeSource.asStateFlow()
+  fun dismissRouteError() { _routeError.value = null }
+  fun acceptRouteSource(route: uniffi.ferrostar.Route) {
+    _routeSource.value = AppModule.routing.sourceOf(route)
+  }
 
   fun startNavigation(destination: GeographicCoordinate, name: String? = null) {
     val gen = ++navGeneration
-    com.morton.trucknav.nav.NavLog.log("start", "gen=$gen to=$destination name=$name caller=${com.morton.trucknav.nav.NavLog.caller()}")
-    viewModelScope.launch(Dispatchers.IO) {
-      // TODO: Fail gracefully
-      val lastLocation = location.value ?: run { com.morton.trucknav.nav.NavLog.log("start", "gen=$gen aborted: no location"); return@launch }
-
-      // TODO: Add label to waypoint?
-      // TODO: Assign the destination to the `NavigationManagerBridge`
-      Log.d(TAG, "fetching route to $destination with name $name")
-      val routes =
-          ferrostarCore.getRoutes(
-              lastLocation,
-              listOf(
-                  Waypoint(coordinate = destination, kind = WaypointKind.BREAK),
-              ),
-          )
-
-      val route = routes.first()
-      com.morton.trucknav.nav.NavLog.route("fetched gen=$gen", route)
-      if (gen != navGeneration) { com.morton.trucknav.nav.NavLog.log("start", "gen=$gen dropped: navigation was stopped/restarted while fetching (now gen=$navGeneration)"); return@launch }
-
-      if (simulated.value) {
-        locationProvider.enableSimulationOn(route)
-      }
-
-      // Android Auto rule: one navigator. We are the host, so we win.
-      if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
-
-      if (navigationUiState.value.isNavigating()) {
-        ferrostarCore.replaceRoute(route = route)
-      } else {
-        ferrostarCore.startNavigation(route = route)
+    routeJob?.cancel()
+    _routeError.value = null
+    com.morton.trucknav.nav.NavLog.log("start", "gen=$gen to=$destination name=$name")
+    // Apply navigation state on Main, so End cannot race between the generation check and start.
+    routeJob = viewModelScope.launch {
+      try {
+        val lastLocation = location.value ?: throw com.morton.trucknav.routing.RoutingUnavailable("Waiting for a GPS location. Try again after a location fix.")
+        val routes = ferrostarCore.getRoutes(lastLocation, listOf(Waypoint(coordinate = destination, kind = WaypointKind.BREAK)))
+        val route = routes.firstOrNull() ?: throw com.morton.trucknav.routing.RoutingUnavailable("No route was found.")
+        if (gen != navGeneration) return@launch
+        com.morton.trucknav.nav.NavLog.route("fetched gen=$gen", route)
+        if (simulated.value) locationProvider.enableSimulationOn(route)
+        if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
+        if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route)
+        else ferrostarCore.startNavigation(route)
+        acceptRouteSource(route)
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        if (gen == navGeneration) {
+          _routeError.value = (e as? com.morton.trucknav.routing.RoutingUnavailable)?.message
+              ?: "Could not calculate a route. Check connectivity or the offline routing pack, then retry."
+          com.morton.trucknav.nav.NavLog.log("route-error", "gen=$gen ${e.javaClass.simpleName}: ${e.message}")
+        }
       }
     }
   }
 
   override fun stopNavigation() {
     navGeneration++
+    routeJob?.cancel()
+    _routeSource.value = null
+    _routeError.value = null
     com.morton.trucknav.nav.NavLog.log("stop", "gen=$navGeneration caller=${com.morton.trucknav.nav.NavLog.caller()}")
     locationProvider.disableSimulation()
     ferrostarCore.stopNavigation()

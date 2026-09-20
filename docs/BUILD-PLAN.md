@@ -305,3 +305,10 @@ Additional defect found by run4/run5, fixed in 0.17.1: `registerDefaultNetworkCa
 
 ## S18 — Voice (large, later)
 Push-to-talk / wake word → on-device STT (Vosk/whisper.cpp small) with a home fallback (Spark over the tailnet) → intents: navigate to <favorite|place>, toggle <relay>, play <book|music>, style <x>, mute. Not before S17.
+
+
+## S6 implementation receipt — 2026-09-20, routing-s6 (not DONE)
+
+On-device Valhalla implemented in new `:routing` module; server preferred with a three-second budget, native fallback uses the existing verified four-state pack. Debug and minified ARM64 builds pass. Emulator-5556 acceptance: 178.86-mile route, 1168/407 ms local, 0% server distance difference, 257681/263401 KiB PSS; connected-but-stalled server fallback 3478 ms. Start/End, source footer, mute, overview/recenter and error dialog pass. See [S6 controls, audit and handoff](S6-ROUTING.md) and `docs/evidence/s6/`.
+
+Do not mark DONE until ARM64 tablet performance and real GPS reroute/End tests pass. Coordinate the small Scene/ViewModel integration with S17's newer favorites/API changes before merge. An earlier cold-start PMTiles gray-map observation remains documented; later settled-screen checks pass, root cause not established. LocalAssetServer untouched.
