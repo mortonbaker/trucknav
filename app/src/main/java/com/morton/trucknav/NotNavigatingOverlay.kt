@@ -108,6 +108,7 @@ fun NotNavigatingOverlay(
     // below is a third of the map and was clipping every row after A).
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     var panelTab by remember { mutableStateOf<com.morton.trucknav.nav.DestTab?>(null) }
+    androidx.compose.runtime.LaunchedEffect(panelTab) { viewModel.setEditing("panel", panelTab != null) }
     var focusTick by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val scene0 by viewModel.sceneState.collectAsState()
     Box(modifier.fillMaxSize().padding(top = 16.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
@@ -123,7 +124,7 @@ fun NotNavigatingOverlay(
           PhotonSearch(
               userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }, focusTick = focusTick,
               // Tesla's default: an empty, focused search shows where you have been.
-              onFocusChanged = { f -> if (f && panelTab == null) panelTab = com.morton.trucknav.nav.DestTab.Recents },
+              onFocusChanged = { f -> viewModel.setEditing("search", f); if (f && panelTab == null) panelTab = com.morton.trucknav.nav.DestTab.Recents },
           ) { hit ->
             panelTab = null
             viewModel.selectDestination(

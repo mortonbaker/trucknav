@@ -81,6 +81,18 @@ class DemoNavigationViewModel(
   private val _sceneState = MutableStateFlow(DemoNavigationSceneState())
   val sceneState = _sceneState.asStateFlow()
 
+  // Full-map destination mode (S23e, operator 2026-09-20): while the driver is
+  // entering or editing a destination the rail, the power strip and the side
+  // pane get out of the way. "Editing" = search field focused, a panel
+  // (favorites/recents) open, results on the map, a destination selected
+  // (preview sheet), or the add-a-stop box open. Start, Close or clearing
+  // the search ends it.
+  private val _editing = MutableStateFlow<Set<String>>(emptySet())
+  fun setEditing(key: String, on: Boolean) { _editing.value = if (on) _editing.value + key else _editing.value - key }
+  val fullMap: StateFlow<Boolean> = combine(_sceneState, _editing) { s, e ->
+    e.isNotEmpty() || s.selectedDestination != null || s.searchResults.isNotEmpty() || s.addingStop
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
   // Here's an example of injecting a custom location into the navigation UI state when isNavigating
   // is false.
   override val navigationUiState: StateFlow<NavigationUiState> =
