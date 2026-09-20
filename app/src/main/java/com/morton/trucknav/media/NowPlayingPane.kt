@@ -69,6 +69,8 @@ fun NowPlayingPane(watcher: SessionWatcher, pkg: String, browser: @Composable (o
     var speed by remember { mutableStateOf(com.morton.trucknav.books.Speed.get(ctx)) }
     val sessions by watcher.byPackage.collectAsState()
     val active = sessions[pkg]
+    // Speed can be changed behind the pane (service intent); re-read it when the item changes.
+    LaunchedEffect(active?.title) { speed = com.morton.trucknav.books.Speed.get(ctx) }
 
     if (browsing) {
         Column(modifier) { browser { browsing = false } }
@@ -127,7 +129,8 @@ fun NowPlayingPane(watcher: SessionWatcher, pkg: String, browser: @Composable (o
 @Composable
 private fun DownloadRow() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val id = com.morton.trucknav.books.BooksPlayerService.lastBook(ctx) ?: return
+    val cur by com.morton.trucknav.books.BooksPlayerService.current.collectAsState()
+    val id = cur ?: com.morton.trucknav.books.BooksPlayerService.lastBook(ctx) ?: return
     val states by com.morton.trucknav.books.BookDownloads.states.collectAsState()
     LaunchedEffect(id) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.morton.trucknav.books.BookDownloads.scan(ctx) } }
     val st = states[id]

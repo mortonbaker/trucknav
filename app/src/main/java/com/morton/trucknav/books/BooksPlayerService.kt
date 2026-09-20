@@ -82,9 +82,18 @@ class BooksPlayerService : MediaSessionService() {
                 return super.onCustomCommand(s, controller, customCommand, args)
             }
         }).build()
+        try { getSystemService(android.net.ConnectivityManager::class.java).registerDefaultNetworkCallback(netCb) } catch (e: Exception) { Log.w(TAG, "network callback: $e") }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+
+    // Coming back from a dead zone: push queued positions as soon as a network
+    // exists, whether or not the player is ticking (it may be paused).
+    private val netCb = object : android.net.ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            scope.launch(Dispatchers.IO) { repeat(4) { i -> delay(if (i == 0) 2_000 else 8_000); if (flushQueue()) return@launch } }
+        }
+    }
 
     // media3 drops the service out of the foreground when the player pauses; on
     // Android 14 that leaves a pending foreground start unanswered and the OS
@@ -135,6 +144,7 @@ class BooksPlayerService : MediaSessionService() {
                 currentTitle = s?.title ?: local!!.title
                 val author = s?.author ?: local?.author
                 getSharedPreferences("books", MODE_PRIVATE).edit().putString("last_book", id).apply()
+                current.value = id
                 val resume = s?.currentTime ?: localPosition(id)
                 val items: List<MediaItem>
                 if (local != null) {
@@ -213,15 +223,17 @@ class BooksPlayerService : MediaSessionService() {
 
     private fun localPosition(id: String): Double = getSharedPreferences("books", MODE_PRIVATE).getFloat("pos_$id", 0f).toDouble()
 
-    private suspend fun flushQueue() {
+    // True when nothing is left in the queue.
+    private suspend fun flushQueue(): Boolean {
         val prefs = getSharedPreferences("books", MODE_PRIVATE)
         val queued = prefs.all.filterKeys { it.startsWith("queued_") }
         for ((k, v) in queued) {
             val id = k.removePrefix("queued_"); val p = (v as String).split("|")
             val t = p[0].toDouble(); val dur = p[1].toDouble()
             if (AbsClient.patchProgress(id, t, dur)) { prefs.edit().remove(k).apply(); Log.i(TAG, "flushed queued progress $id t=${t.toInt()}") }
-            else return
+            else return false
         }
+        return true
     }
 
     private fun closeSession() {
@@ -241,6 +253,7 @@ class BooksPlayerService : MediaSessionService() {
         Log.w(TAG, "onDestroy called (book=$bookId playing=${player.isPlaying})", Exception("trace"))
         syncNow("destroy"); closeSession()
         stopSync(); scope.cancel()
+        try { getSystemService(android.net.ConnectivityManager::class.java).unregisterNetworkCallback(netCb) } catch (_: Exception) {}
         session?.release(); session = null
         player.release()
         super.onDestroy()
@@ -253,6 +266,8 @@ class BooksPlayerService : MediaSessionService() {
         private const val CH = "audiobook"
         private const val HOLD_ID = 2
         fun lastBook(ctx: Context): String? = ctx.getSharedPreferences("books", Context.MODE_PRIVATE).getString("last_book", null)
+        // The book the player has open, for panes that must recompose when it changes.
+        val current = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
         fun playLast(ctx: Context) = ctx.startForegroundService(Intent(ctx, BooksPlayerService::class.java).setAction(ACTION_PLAY_LAST))
         const val ACTION_SET_SPEED = "com.morton.trucknav.books.SPEED"
         const val ACTION_SEEK_BY = "com.morton.trucknav.books.SEEK_BY"
