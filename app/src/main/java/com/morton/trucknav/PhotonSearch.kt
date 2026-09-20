@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -93,7 +94,8 @@ fun PhotonSearch(
         delay(350) // debounce typing
         val raw = withContext(Dispatchers.IO) { photon(query, userLocation) }
         // letter + straight-line distance now; ETA from Valhalla's matrix a moment later
-        hits = raw.mapIndexed { i, h -> h.copy(letter = ('A' + i).toString(), distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
+        val withDist = raw.map { h -> h.copy(distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
+        hits = withDist.sortedBy { it.distanceM ?: Double.MAX_VALUE }.take(6).mapIndexed { i, h -> h.copy(letter = ('A' + i).toString()) }
         onResults(hits)
         val etas = withContext(Dispatchers.IO) { matrixEta(userLocation, hits) }
         if (etas != null) { hits = hits.mapIndexed { i, h -> h.copy(etaS = etas.getOrNull(i)) }; onResults(hits) }
@@ -135,8 +137,8 @@ fun PhotonSearch(
             }
         }
         if (hits.isNotEmpty()) {
-            Surface(shape = RoundedCornerShape(20.dp), color = SEARCH_SURFACE, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Column {
+            Surface(shape = RoundedCornerShape(20.dp), color = SEARCH_SURFACE, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(max = 330.dp)) {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                     hits.forEachIndexed { i, h ->
                         Row(
                             Modifier.semantics { contentDescription = "Result: " + h.label }

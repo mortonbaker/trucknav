@@ -148,10 +148,14 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
     val pts = hits.map { it.coordinate } + listOfNotNull(viewModel.navigationUiState.value.location?.coordinates)
     val west = pts.minOf { it.lng }; val east = pts.maxOf { it.lng }; val south = pts.minOf { it.lat }; val north = pts.maxOf { it.lat }
     navigationMapState.cameraMode = com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.FREE
-    val top = with(density) { destinationPreviewTopPaddingPx.toDp() } + 24.dp
+    // The results card can cover most of the map; padding must leave a real viewport.
+    val mapH = with(density) { mapSize.height.toDp() }; val mapW = with(density) { mapSize.width.toDp() }
+    val cardBottom = with(density) { destinationPreviewTopPaddingPx.toDp() } + 16.dp
+    val pad = if (landscape) PaddingValues(start = mapW * 0.6f, top = 24.dp, end = 32.dp, bottom = 32.dp)   // card is on the left
+              else PaddingValues(start = 32.dp, top = minOf(cardBottom, mapH * 0.45f), end = 32.dp, bottom = 32.dp)
     navigationMapState.cameraState.animateTo(
         boundingBox = org.maplibre.spatialk.geojson.BoundingBox(west = west, south = south, east = east, north = north),
-        padding = PaddingValues(start = 48.dp, top = top, end = 48.dp, bottom = 48.dp),
+        padding = pad,
         duration = kotlin.time.Duration.parse("600ms"),
     )
   }
