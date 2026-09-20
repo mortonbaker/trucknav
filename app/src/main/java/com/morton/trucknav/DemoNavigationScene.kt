@@ -193,14 +193,16 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   }
 
   // Preview: fit the chosen candidate and the puck under the sheet.
-  LaunchedEffect(sceneState.preview, sceneState.previewSelected) {
-    val c = sceneState.preview.getOrNull(sceneState.previewSelected) ?: return@LaunchedEffect
+  LaunchedEffect(sceneState.preview, destinationPreviewTopPaddingPx) {
+    sceneState.preview.getOrNull(sceneState.previewSelected) ?: return@LaunchedEffect
     if (mapSize.width == 0) return@LaunchedEffect
-    val pts = c.route.geometry + listOfNotNull(viewModel.navigationUiState.value.location?.coordinates)
+    // Every candidate must be on screen: the driver picks by the letters on the map.
+    val pts = sceneState.preview.flatMap { it.route.geometry } + listOfNotNull(viewModel.navigationUiState.value.location?.coordinates)
     val mapW = with(density) { mapSize.width.toDp() }; val mapH = with(density) { mapSize.height.toDp() }
     val sheet = with(density) { sceneState.destinationSheetHeightPx.toDp() }
-    val pad = if (landscape) PaddingValues(start = 24.dp, top = 100.dp, end = mapW * 0.46f + 16.dp, bottom = 24.dp)
-              else PaddingValues(start = 24.dp, top = 100.dp, end = 24.dp, bottom = minOf(sheet + 16.dp, mapH * 0.6f))
+    val topPad = maxOf(100.dp, with(density) { destinationPreviewTopPaddingPx.toDp() } + 16.dp)   // clear the search box + tiles
+    val pad = if (landscape) PaddingValues(start = 24.dp, top = topPad, end = mapW * 0.46f + 16.dp, bottom = 24.dp)
+              else PaddingValues(start = 24.dp, top = topPad, end = 24.dp, bottom = minOf(sheet + 16.dp, mapH * 0.6f))
     navigationMapState.cameraMode = com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.FREE
     navigationMapState.cameraState.animateTo(fitCamera(pts, mapW, mapH, pad), duration = kotlin.time.Duration.parse("600ms"))
   }
@@ -268,7 +270,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   ) { ui ->
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
-    com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected)
+    com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected) { viewModel.selectPreview(it) }
     com.morton.trucknav.nav.SearchResultsOverlay(sceneState.searchResults) { hit ->
       viewModel.setSearchResults(emptyList())
       viewModel.selectDestination(

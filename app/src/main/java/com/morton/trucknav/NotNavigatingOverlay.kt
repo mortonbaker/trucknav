@@ -125,8 +125,8 @@ fun NotNavigatingOverlay(
           }
           if (scene.searchResults.isEmpty()) {
             com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
-              com.morton.trucknav.nav.NavLog.log("quick", "go ${q.name}")
-              viewModel.startNavigation(q.coordinate, q.name)
+              com.morton.trucknav.nav.NavLog.log("quick", "preview ${q.name}")
+              viewModel.selectDestination(q.coordinate, q.name, DestinationSelectionOrigin.SearchResult)
             }
           }
         }

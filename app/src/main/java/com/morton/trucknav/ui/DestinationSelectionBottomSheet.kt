@@ -107,9 +107,9 @@ private fun DestinationSelectionBottomSheetContent(
                   .background(if (sel) androidx.compose.ui.graphics.Color(0xFF1f5f8b) else androidx.compose.ui.graphics.Color(0xFF1a2028))
                   .clickable { com.morton.trucknav.AppModule.viewModel.selectPreview(i) }
                   .padding(12.dp)
-                  .semantics { contentDescription = "Route " + (i + 1) + ": " + c.label },
+                  .semantics { contentDescription = "Route " + com.morton.trucknav.nav.LETTERS[i] + ": " + c.label },
           ) {
-            Text("${c.minutes} min", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("${com.morton.trucknav.nav.LETTERS[i]}  ·  ${c.minutes} min", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleLarge)
             Text("${"%.1f".format(c.miles)} mi" + if (c.via.isNotBlank()) " · via ${c.via}" else "", color = androidx.compose.ui.graphics.Color(0xFFaab4c0), style = MaterialTheme.typography.bodyMedium, maxLines = 2)
           }
         }
