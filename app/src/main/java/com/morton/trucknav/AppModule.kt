@@ -74,7 +74,7 @@ object AppModule {
         val core = FerrostarCore(
             routing,
             httpClient = httpClient,
-            locationProvider = locationProvider,
+            locationProvider = com.morton.trucknav.nav.LockedLocationProvider(locationProvider),   // B11
             foregroundServiceManager = foregroundServiceManager,
             navigationControllerConfig = NavigationControllerConfig.demoConfig(),
         )
@@ -87,7 +87,7 @@ object AppModule {
         core.alternativeRouteProcessor = AlternativeRouteProcessor { it, routes ->
             val navigating = it.state.value.tripState is uniffi.ferrostar.TripState.Navigating
             com.morton.trucknav.nav.NavLog.log("reroute", "alternates=${routes.size} navigating=$navigating -> ${if (navigating && routes.isNotEmpty()) "replace" else "ignore"}")
-            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); it.replaceRoute(routes.first()); viewModel.acceptRouteSource(routes.first()) }
+            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); com.morton.trucknav.nav.NavLock.sync { it.replaceRoute(routes.first()) }; viewModel.acceptRouteSource(routes.first()) }
         }
         core
     }

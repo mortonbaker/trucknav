@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import uniffi.ferrostar.GeographicCoordinate
@@ -47,7 +48,11 @@ data class DemoNavigationSceneState(
     val searchResults: List<PhotonHit> = emptyList(),
     val preview: List<com.morton.trucknav.nav.RouteCandidate> = emptyList(),
     val previewSelected: Int = 0,
+    val arrived: Arrival? = null,
 )
+
+// Shown at the end of a trip; navigation ends ARRIVAL_LINGER_MS later or on Done.
+data class Arrival(val name: String?, val atMs: Long)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DemoNavigationViewModel(
@@ -90,8 +95,31 @@ class DemoNavigationViewModel(
               initialValue = NavigationUiState.empty(),
           )
 
+  // Arrival: Ferrostar flips the trip to Complete within 10 m of the end and
+  // then just sits there (session alive, foreground service up). Show the card,
+  // then end the trip like Android Auto does.
+  private var destinationName: String? = null
+  private var arrivalJob: kotlinx.coroutines.Job? = null
+  private fun onArrived() {
+    val name = destinationName
+    com.morton.trucknav.nav.NavLog.log("arrival", "name=$name gen=$navGeneration; ending in ${ARRIVAL_LINGER_MS / 1000}s")
+    _sceneState.value = _sceneState.value.copy(arrived = Arrival(name, System.currentTimeMillis()))
+    AppModule.voiceGate.sayArrival(name)
+    arrivalJob?.cancel()
+    arrivalJob = viewModelScope.launch { kotlinx.coroutines.delay(ARRIVAL_LINGER_MS); dismissArrival() }
+  }
+  fun dismissArrival() {
+    arrivalJob?.cancel(); arrivalJob = null
+    if (_sceneState.value.arrived == null) return
+    _sceneState.value = _sceneState.value.copy(arrived = null)
+    if (ferrostarCore.state.value.tripState is uniffi.ferrostar.TripState.Complete) stopNavigation()
+  }
+
   init {
     com.morton.trucknav.nav.NavLog.watch(navigationUiState)
+    viewModelScope.launch {
+      ferrostarCore.state.map { it.tripState is uniffi.ferrostar.TripState.Complete }.distinctUntilChanged().collect { if (it) onArrived() }
+    }
     // While we navigate, a foreign navigator that appears is stopped at once.
     viewModelScope.launch {
       com.morton.trucknav.nav.NavGuard.foreign.collect { f ->
@@ -205,7 +233,8 @@ class DemoNavigationViewModel(
     com.morton.trucknav.nav.NavLog.route("preview gen=$gen", route)
     if (simulated.value) locationProvider.enableSimulationOn(route)
     if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
-    if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route)
+    destinationName = name; AppModule.voiceGate.lastClass = null
+    com.morton.trucknav.nav.NavLock.sync { if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route) }
     acceptRouteSource(route)
   }
 
@@ -255,8 +284,8 @@ class DemoNavigationViewModel(
         com.morton.trucknav.nav.NavLog.route("fetched gen=$gen", route)
         if (simulated.value) locationProvider.enableSimulationOn(route)
         if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
-        if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route)
-        else ferrostarCore.startNavigation(route)
+        destinationName = name; AppModule.voiceGate.lastClass = null
+        com.morton.trucknav.nav.NavLock.sync { if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route) }
         acceptRouteSource(route)
       } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
@@ -277,10 +306,11 @@ class DemoNavigationViewModel(
     _routeError.value = null
     com.morton.trucknav.nav.NavLog.log("stop", "gen=$navGeneration caller=${com.morton.trucknav.nav.NavLog.caller()}")
     locationProvider.disableSimulation()
-    ferrostarCore.stopNavigation()
+    com.morton.trucknav.nav.NavLock.sync { ferrostarCore.stopNavigation() }
   }
 
   companion object {
     const val TAG = "DemoNavigationViewModel"
+    const val ARRIVAL_LINGER_MS = 10_000L
   }
 }

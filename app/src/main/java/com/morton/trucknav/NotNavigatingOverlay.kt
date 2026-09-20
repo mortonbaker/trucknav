@@ -89,6 +89,8 @@ fun NotNavigatingOverlay(
           contentAlignment = Alignment.TopCenter,
       ) {
         Column {
+          val scene by viewModel.sceneState.collectAsState()
+          scene.arrived?.let { a -> com.morton.trucknav.nav.ArrivalCard(a, onDone = { viewModel.dismissArrival() }); return@Column }
           PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
             viewModel.selectDestination(
                 location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
@@ -96,7 +98,6 @@ fun NotNavigatingOverlay(
                 origin = DestinationSelectionOrigin.SearchResult,
             )
           }
-          val scene by viewModel.sceneState.collectAsState()
           if (scene.searchResults.isEmpty()) {
             com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
               com.morton.trucknav.nav.NavLog.log("quick", "go ${q.name}")

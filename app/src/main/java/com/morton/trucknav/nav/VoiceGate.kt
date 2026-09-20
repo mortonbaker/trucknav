@@ -15,12 +15,23 @@ import uniffi.ferrostar.SpokenInstruction
 //    us structured types for the non-turn announcements.
 class VoiceGate(private val tts: AndroidTtsObserver) : SpokenInstructionObserver {
     @Volatile var disabledClasses: Set<String> = emptySet()
+    // Class of the last instruction Ferrostar handed us (muted or not).
+    @Volatile var lastClass: String? = null
 
     override fun onSpokenInstructionTrigger(instruction: SpokenInstruction) {
+        val cls = classify(instruction.text); lastClass = cls
         if (tts.isMuted) { NavLog.log("voice", "muted, dropped: \"${instruction.text}\""); return }
-        val cls = classify(instruction.text)
         if (cls in disabledClasses) { NavLog.log("voice", "class $cls off, dropped: \"${instruction.text}\""); return }
         tts.onSpokenInstructionTrigger(instruction)
+    }
+    // Arrival can beat the last step's utterance when fixes are sparse (the trip
+    // completes within 10 m of the end before the "You have arrived" trigger
+    // distance is reached). The view model then says it through the same gate.
+    fun sayArrival(name: String?) {
+        if (lastClass == "arrival") return
+        val text = if (name.isNullOrBlank()) "You have arrived at your destination." else "You have arrived at ${name.substringBefore(",")}."
+        NavLog.log("voice", "arrival not yet spoken; saying \"$text\"")
+        onSpokenInstructionTrigger(SpokenInstruction(text, null, 0.0, java.util.UUID.randomUUID()))
     }
     override fun stopAndClearQueue() = tts.stopAndClearQueue()
     override fun setMuted(muted: Boolean) { tts.setMuted(muted); if (muted) tts.stopAndClearQueue() }
@@ -31,7 +42,7 @@ class VoiceGate(private val tts: AndroidTtsObserver) : SpokenInstructionObserver
         // Announcement classes the settings sheet can switch off.
         val CLASSES = listOf("turn", "continue", "arrival", "reroute", "exit", "merge", "roundabout")
         fun classify(text: String): String {
-            val t = text.lowercase()
+            val t = text.lowercase().substringBefore(". then")
             return when {
                 "arrive" in t || "destination" in t -> "arrival"
                 "rerout" in t || "recalculat" in t -> "reroute"
