@@ -307,9 +307,33 @@ S16 done-criteria still open (need the truck): strip Starlink cell OFF→ON→OF
 ## S14 — Mute works (B4, small) — RESOLVED 2026-09-20: the unmuted voice was OsmAnd; re-verify TruckNav mute in S17
 **Done when** tapping Mute logs `isMuted=true`, the next instruction produces no TTS (`TextToSpeechManagerPerUserService` shows no speak), the icon shows muted, and it survives rotation and pause/resume.
 
-## S15 — Tile prefetch along the route (B5, medium)
+## S15 — Tile prefetch along the route (B5, medium) — DONE 2026-09-20, 0.22.0 (emulator-proven; truck drive to confirm B5)
 **Goal:** satellite/hybrid never pops in behind the vehicle. Research first: MapLibre `prefetchZoomDelta`, raster `maxzoom` overzoom, 512-px tiles, ambient cache size (`OfflineManager.setMaximumAmbientCacheSize`, default 50 MB → ≥ 500 MB), and warming tiles along the route polyline ahead of the puck (offline region for the route bbox or an in-app prefetcher).
 **Done when** on the Denton route in hybrid at simulated 60 mph, grey-pixel share of the map area stays < 1 % for 5 minutes (screenshot every 5 s); cache survives restart.
+
+### S15 results — 2026-09-20 16:40, claude-vehicle, 0.22.0 / versionCode 81
+
+**Research (MapLibre native 13.0.2 via maplibre-compose 0.13, Ferrostar 0.56):**
+- `prefetchZoomDelta`: not exposed by maplibre-compose; the native default (prefetch on, delta 4) is already in effect, which is why a dead link shows **blur** (the z12 parent stretched 16×), not grey. The plan's grey-share criterion is therefore satisfied by the baseline too (0.06 % max on every run); the real defect is softness/pop-in, so the harness also measures edge energy of the imagery.
+- Ambient cache: default 50 MB ≈ 90 km of hybrid at nav zoom. Now **1 GB** (`OfflineManager.setMaximumAmbientCacheSize`), set at app start. A whole Denton–Tulsa drive stays warm for the way back.
+- Raster tiles: nav zoom is 16 (Ferrostar Automotive) and the Esri source is 256 px, so MapLibre fetches source z17 while navigating. `docs/mkstyles.py` takes `ESRI_TILE=512` to fetch z16 instead (¼ the tiles, ½ the resolution); **not switched** — imagery detail at driveways matters more than warm-up time. Operator's call.
+- Along-route warm-up: `map/RoutePrefetcher.kt`. While navigating on an online style it hands MapLibre two offline regions built from the route: *far* = whole remaining route z11–13, *near* = next 30 km z14–16 as a chain of ±900 m squares, re-cut every 10 km of progress, rebuilt on reroute, deleted when navigation ends or the style goes offline. Download style is the imagery-only satellite style (same source as hybrid, so the cache serves both). Regions land in the same tile database the renderer reads.
+- Styles: satellite/hybrid background is now the sentinel `#0c2a1e` so "no imagery" is measurable (only visible where nothing has ever loaded).
+
+**Measured (`docs/s15-prefetch.sh <tag> <mode>`, emulator, Sanger→Gainesville on I-35, 60 mph fake drive, 60 shots):**
+
+| Run | Link | grey max | sharpness mean / last 60 s | Evidence |
+|---|---|---|---|---|
+| baseline | shaped 120–250 ms, 20 Mbit | 0.06 % | 2634 / – | `s15-base3` |
+| prefetch | same | 0.06 % | 2624 / – | `s15-pre3` |
+| baseline-off | **Wi-Fi cut** at t≈8 s | 0.06 % | **2006 / 1477** | `s15-base4` |
+| prefetch-off | corridor warm (14 s, 1457 tiles, 16.9 MB), **then Wi-Fi cut** | 0.06 % | **2392 / 1947** | `s15-pre5` |
+
+Criterion (grey < 1 % for 5 min): PASS in every mode. The discriminating number is sharpness with the link dead: +19 % mean, +32 % in the last minute, i.e. z16 imagery from the corridor instead of z12 parents for the whole offline stretch. Crash gate 0 in every run. The emulator's throttle (`network speed 1:1`) is not a real outage; only `svc wifi disable` on the *emulator* is (never on the tablet).
+
+**Truck check to close B5 for real:** drive Denton→Tulsa in hybrid on 0.22.0; `adb logcat -s RoutePrefetch` shows `near complete` within ~30 s of Start and a re-cut every 10 km; pop-in behind the truck should be gone on Starlink drops. Ambient cache growth is visible as `files/mbgl-offline.db`.
+
+---
 
 ## S16 — Vehicle switches on every network (B6, small) — Vehicle pane shipped in v0.14.0; yaml flash + Pi verification pending
 **Goal:** every relay controllable from TruckNav wherever the truck is, on a dedicated **Vehicle** pane (rail item, Material ToggleOn): grid of >= 76 dp tiles built from the board's own switch list (names come from `4runner.yaml`), icon + name + state, one tap, greyed with a reason when unreachable, hold-to-confirm only for relays that cut critical power. Starlink keeps its status cell in the power strip; Rear Lights (Relay 2) is the second first-class tile. Add `EverythingPhone` (priority 7) to `4runner.yaml` and OTA-flash from the ESPHome dashboard with the truck at home; then verify `/data/starlink/relay.sh` + the Node-RED `/starlink/<action>` flow with Pi and board on `Everylink`; then add Relay 2 (rear lights) etc. to the Power pane.
