@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity(), AndroidTtsStatusListener {
     // Set up the App Module
     org.maplibre.android.log.Logger.setVerbosity(org.maplibre.android.log.Logger.VERBOSE)
     AppModule.init(this)
+    com.morton.trucknav.map.RoutePrefetcher.start(this)   // S15: ambient cache + along-route warm-up
 
     // Set up text-to-speech for spoken instructions. This is a pretty "default" setup.
     // Most Android apps will want to set this up. TTS setup is *not* automatic.

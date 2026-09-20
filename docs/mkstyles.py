@@ -6,7 +6,7 @@ A = os.path.expanduser("~/trucknav-assets")
 light = json.load(open(f"{A}/style-light.json"))
 
 ESRI = {
-    "type": "raster", "tileSize": 256, "maxzoom": 19,
+    "type": "raster", "tileSize": int(os.environ.get("ESRI_TILE", "256")), "maxzoom": 19,
     "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
     "attribution": "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community",
 }
@@ -23,7 +23,7 @@ def base(name):
 sat = base("satellite")
 sat["sources"] = {"esri": ESRI}
 sat["layers"] = [
-    {"id": "background", "type": "background", "paint": {"background-color": "#1b1f24"}},
+    {"id": "background", "type": "background", "paint": {"background-color": "#0c2a1e"}},
     {"id": "imagery", "type": "raster", "source": "esri", "paint": {"raster-fade-duration": 200}},
 ]
 json.dump(sat, open(f"{A}/style-satellite.json", "w"), indent=1)
@@ -46,7 +46,7 @@ for l in layers:
     elif l["type"] == "symbol":
         p["text-color"] = "#ffffff"; p["text-halo-color"] = "#000000"; p["text-halo-width"] = 1.4
 hyb["layers"] = [
-    {"id": "background", "type": "background", "paint": {"background-color": "#1b1f24"}},
+    {"id": "background", "type": "background", "paint": {"background-color": "#0c2a1e"}},
     {"id": "imagery", "type": "raster", "source": "esri", "paint": {"raster-fade-duration": 200}},
 ] + layers
 json.dump(hyb, open(f"{A}/style-hybrid.json", "w"), indent=1)
