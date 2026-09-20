@@ -83,5 +83,6 @@ object AppModule {
     }
 
     val ttsObserver: AndroidTtsObserver by lazy { AndroidTtsObserver(appContext) }
+    val voiceGate: com.morton.trucknav.nav.VoiceGate by lazy { com.morton.trucknav.nav.VoiceGate(ttsObserver) }
     val viewModel: DemoNavigationViewModel by lazy { DemoNavigationViewModel() }
 }
