@@ -307,11 +307,11 @@ S16 done-criteria still open (need the truck): strip Starlink cell OFF→ON→OF
 ## S14 — Mute works (B4, small) — RESOLVED 2026-09-20: the unmuted voice was OsmAnd; re-verify TruckNav mute in S17
 **Done when** tapping Mute logs `isMuted=true`, the next instruction produces no TTS (`TextToSpeechManagerPerUserService` shows no speak), the icon shows muted, and it survives rotation and pause/resume.
 
-## S15 — Tile prefetch along the route (B5, medium) — DONE 2026-09-20, 0.22.0 (emulator-proven; truck drive to confirm B5)
+## S15 — Tile prefetch along the route (B5, medium) — DONE 2026-09-20, 0.25.1 (emulator-proven; truck drive to confirm B5)
 **Goal:** satellite/hybrid never pops in behind the vehicle. Research first: MapLibre `prefetchZoomDelta`, raster `maxzoom` overzoom, 512-px tiles, ambient cache size (`OfflineManager.setMaximumAmbientCacheSize`, default 50 MB → ≥ 500 MB), and warming tiles along the route polyline ahead of the puck (offline region for the route bbox or an in-app prefetcher).
 **Done when** on the Denton route in hybrid at simulated 60 mph, grey-pixel share of the map area stays < 1 % for 5 minutes (screenshot every 5 s); cache survives restart.
 
-### S15 results — 2026-09-20 16:40, claude-vehicle, 0.22.0 / versionCode 81
+### S15 results — 2026-09-20 16:40, claude-vehicle, shipped in 0.25.1 / versionCode 98 (main already past the vehicle range; merges take max+2)
 
 **Research (MapLibre native 13.0.2 via maplibre-compose 0.13, Ferrostar 0.56):**
 - `prefetchZoomDelta`: not exposed by maplibre-compose; the native default (prefetch on, delta 4) is already in effect, which is why a dead link shows **blur** (the z12 parent stretched 16×), not grey. The plan's grey-share criterion is therefore satisfied by the baseline too (0.06 % max on every run); the real defect is softness/pop-in, so the harness also measures edge energy of the imagery.
@@ -331,7 +331,7 @@ S16 done-criteria still open (need the truck): strip Starlink cell OFF→ON→OF
 
 Criterion (grey < 1 % for 5 min): PASS in every mode. The discriminating number is sharpness with the link dead: +19 % mean, +32 % in the last minute, i.e. z16 imagery from the corridor instead of z12 parents for the whole offline stretch. Crash gate 0 in every run. The emulator's throttle (`network speed 1:1`) is not a real outage; only `svc wifi disable` on the *emulator* is (never on the tablet).
 
-**Truck check to close B5 for real:** drive Denton→Tulsa in hybrid on 0.22.0; `adb logcat -s RoutePrefetch` shows `near complete` within ~30 s of Start and a re-cut every 10 km; pop-in behind the truck should be gone on Starlink drops. Ambient cache growth is visible as `files/mbgl-offline.db`.
+**Truck check to close B5 for real:** drive Denton→Tulsa in hybrid on 0.25.1+; `adb logcat -s RoutePrefetch` shows `near complete` within ~30 s of Start and a re-cut every 10 km; pop-in behind the truck should be gone on Starlink drops. Ambient cache growth is visible as `files/mbgl-offline.db`.
 
 ---
 

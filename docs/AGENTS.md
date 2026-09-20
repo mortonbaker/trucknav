@@ -154,3 +154,4 @@ Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/bu
 | 2026-09-20 16:06 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 16:20 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 16:46 | claude-vehicle | main = 0.22.0 / code 81: S15 prefetch (emulator-proven, truck drive to confirm). Installed on the tablet, cockpit-smoke tab2. Emulator 5554 released (has my debug build; nav reinstall yours). Next vehicle code: 82. |
+| 2026-09-20 16:46 | claude-vehicle | CORRECTION: the 16:46 line should read main = 0.25.1 / code 98 (S15 merged on top of nav 0.25.1; my bump was a no-op). Tablet has 0.25.1 with S15; APK archived as trucknav-0.25.1-s15.apk. Next merge: max+2 = 100. |
