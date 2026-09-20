@@ -123,7 +123,7 @@ Housekeeping, not slices: DHCP reservation / `manual_ip` for the relay board; ad
 
 ---
 
-## S5 — Books offline downloads (medium)
+## S5 — Books offline downloads (medium) — code shipped 0.15.2 (main), D1/D2/D3 PASS, D2b/D4/D5 pending a clean run
 
 **Goal:** a downloaded book plays with no network at all.
 
@@ -135,6 +135,35 @@ Housekeeping, not slices: DHCP reservation / `manual_ip` for the relay board; ad
 - Self-restoring Wi-Fi cut for 5 minutes mid-book (downloaded): playback never stalls, crosses a track boundary, position monotonic in `dumpsys media_session`.
 - After Wi-Fi returns, server progress equals the pane position within 20 s (queued syncs flushed).
 - Delete removes the files and the book falls back to streaming.
+
+---
+
+### S5 results — 2026-09-20, claude-studio, builds 0.15.0 → 0.15.2 (main a8dc7a5)
+
+Book under test: *Counter-Elites and the New Populism* (`8c5b4b84…`, 4 tracks, 1124 s; the library has no 2-track book, this is the smallest multi-track one; the 5-minute cut crosses two track boundaries). Harness `docs/s5-books-offline.sh <tag>`; evidence `~/evidence/s5-run{1,2,3}/`. Files live in `<externalFiles>/books/<id>/` (not `filesDir`) so adb can verify them on a release build.
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| D1 download | 4 track files, size == server `metadata.size`; manifest last | 19 s cold / 3 s resumed; 7867442, 3246477, 4745984, 6635752 exact; manifest.json | PASS (0.15.1, 0.15.2) | run2/run3 `d1-ls.txt` |
+| D1b badge + storage line | check badge on the cover; "Downloads: N used, M free" | `Downloads: 21 MB used, 12.2 GB free`, `content-desc="Downloaded"` | PASS (0.15.1) | run2 `d1-continue-after.png` |
+| D2 local source | player log `source=local` | `opened … 4 tracks, resume 0s of 1124s source=local session=true` | PASS (0.15.1, 0.15.2) | run2/run3 |
+| D2b pane buttons | "Downloaded" + "Delete download" on the pane | 0.15.1 showed the *previous* book's state (`DownloadRow()` never recomposed, fixed 0.15.2); 0.15.2 run drove the Samsung launcher, not the app | NOT RUN on 0.15.2 | run3 `d2-pane.png` |
+| D3 offline 5 min | ≥50 samples PLAYING, monotonic, crosses a boundary, advance == wall ±5 % | 55/55 PLAYING, items 0→1→2, 277 s advanced in 275 s wall, monotonic, 0 hardware touches | PASS (0.15.2) | run3 `offline-samples.txt`, `d3-analysis.txt` |
+| D4 sync after Wi-Fi | server == pane ±20 s | 12 syncs queued during the cut; at 13:15:18 (Wi-Fi still off) a foreign `adb install` of 0.16.0 from `nav-s17` force-stopped the process; the 0.15.2 flush path never got to run | BLOCKED (foreign install) | run3 `post-logcat.txt` 13:15:18 |
+| D5 delete → stream | dir gone; reopen streams | tap missed (D2b) on 0.15.1; 0.16.0 (no S5 code) on the tablet by then in run3 | NOT RUN | — |
+| Crash gate | 0 crashes | 0 in every run | PASS | `crash.txt` |
+
+Defects found and fixed on the way:
+- 0.15.1: the project never applied the kotlinx-serialization compiler plugin, so `@Serializable` on the manifest was inert and the write threw; manifest JSON is now built by hand like `AbsClient`.
+- 0.15.2: `DownloadRow()` read the current book from prefs with no observable input → Compose never recomposed it after the book changed. `BooksPlayerService.current` (StateFlow) feeds it now. Same fix makes the Speed label re-read when the item changes.
+- 0.15.2: queued progress only flushed on sync ticks, so a paused player never pushed. `registerDefaultNetworkCallback` → flush with retries.
+- Harness: the service action is `…books.SPEED`, not `SET_SPEED`; the `state=PlaybackState` line is >2 lines below `package=` in this dumpsys; an `adb install` leaves the old launcher on screen → `am start` TruckNav first; hardware touches (`InputReader Btn_touch`) during the cut are logged and turn a D3 failure into BLOCKED.
+
+Interference log (why run2/run3 are partial):
+- run2 12:58:36–12:58:54: hardware touches paused the book and opened the Library mid-cut.
+- run3 13:15:18: `installPackageLI` of 0.16.0 (initiating `com.android.shell`, over the new USB transport `R9PT207J6ZN`) killed pid 19027 while the tree claim and tablet lease were both held by claude-studio.
+
+Remaining to close S5 on a build that contains it: D2b, D4, D5 (one run of `docs/s5-books-offline.sh`, ~9 min, needs the tablet to itself). Use the USB serial for the offline window now that the tablet is cabled to atlas01.
 
 ---
 

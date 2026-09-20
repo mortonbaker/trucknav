@@ -30,6 +30,7 @@ waitadb() { for i in $(seq 1 60); do adb -s $S shell true >/dev/null 2>&1 && ret
 
 # --- contract ---------------------------------------------------------------------------
 docs/tablet-lock.sh $S status | grep -q "$AGENT" || { echo "tablet lease not held by $AGENT — aborting"; docs/tablet-lock.sh $S status; exit 2; }
+sh am start -n $P/.MainActivity >/dev/null 2>&1; sleep 3   # an install leaves the old launcher on screen
 V=$(sh dumpsys package $P | grep -m1 versionName | tr -d '\r '); echo "build: $V  tag: $TAG  evidence: $E"
 echo "$V" > "$E/version.txt"
 sh dumpsys media_session > "$E/pre-media.txt"; adb -s $S logcat -d > "$E/pre-logcat.txt"; shot pre
