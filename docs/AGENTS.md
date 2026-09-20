@@ -115,3 +115,17 @@ No lease conflicts with the tablet, no Wi-Fi to lose.
 
 Default: prove it on the emulator, then confirm the hardware-dependent part on the tablet in one short lease window.
 | 2026-09-20 14:05 | claude-studio | S5 closed on 0.17.1; tree claim + tablet lease released. main = S5 + S17.1/S17.3; next versionCode 41. |
+
+## 6. Network and playback on the tablet (operator rule, 2026-09-20 14:15)
+
+- **Never cut Wi-Fi unless the tablet is on USB.** Check `adb devices -l` for a `usb:` transport and run the
+  test against that serial. Over Wi-Fi only, a cut strands the operator and every other agent.
+  Prefer a server-side block (stop the ABS/Valhalla container, or `tailscale serve` off) over touching the
+  tablet's radio at all when the test allows it. Cuts must self-restore from the tablet (`svc wifi enable`
+  in the same nohup'd script) and be as short as the criterion needs.
+- **Do not play the operator's books.** Tests use the designated test book only
+  (`8c5b4b84…` Counter-Elites, 4 tracks); never open anything from "Continue".
+  Abort if anything is already playing when the run starts (the operator may be listening).
+  Leave the player paused at the end, confirm with `dumpsys media_session`, and say so in the receipt.
+- Playback that a test starts is the test's responsibility until it is stopped. No "leave it running
+  and check later".

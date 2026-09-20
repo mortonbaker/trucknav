@@ -30,6 +30,11 @@ waitadb() { for i in $(seq 1 60); do adb -s $S shell true >/dev/null 2>&1 && ret
 
 # --- contract ---------------------------------------------------------------------------
 docs/tablet-lock.sh $S status | grep -q "$AGENT" || { echo "tablet lease not held by $AGENT — aborting"; docs/tablet-lock.sh $S status; exit 2; }
+# Wi-Fi is only ever cut with the tablet on USB (adb survives, the operator is not stranded).
+adb devices -l | grep -q "usb:" || { echo "no USB transport: refusing to run a Wi-Fi cut over Wi-Fi"; exit 2; }
+echo "$S" | grep -q ":5555" && { echo "run with SERIAL=<usb serial>, not the TCP transport"; exit 2; }
+# Never over the operator's listening: abort if anything is already playing.
+if sh dumpsys media_session | grep -qE "state=PLAYING\(3\)"; then echo "something is playing on the tablet — operator may be listening; aborting"; exit 2; fi
 sh am start -n $P/.MainActivity >/dev/null 2>&1; sleep 3   # an install leaves the old launcher on screen
 V=$(sh dumpsys package $P | grep -m1 versionName | tr -d '\r '); echo "build: $V  tag: $TAG  evidence: $E"
 echo "$V" > "$E/version.txt"
@@ -142,7 +147,9 @@ row "D5b stream fallback" "reopening the book streams (source=stream)" "$src" "$
 # --- crash gate + restore --------------------------------------------------------------
 adb -s $S logcat -d -b crash > "$E/crash.txt"; c=$(grep -c "Process: $P" "$E/crash.txt")
 row "Crash gate" "0 crashes for $P" "$c" "$([ "$c" = 0 ] && echo PASS || echo FAIL)" "crash.txt"
-tap "Play/Pause"; sleep 1   # leave it paused, as found
+# Leave nothing running: pause, confirm, and close the test book's session.
+tap "Play/Pause"; sleep 2; [ "$(mstate)" = "state=PLAYING(3)" ] && tap "Play/Pause"; sleep 1
+echo "final player state: $(mstate)"
 [ -n "$SPEED0" ] && svc SPEED --ef speed $SPEED0
 [ -n "$VOL0" ] && sh cmd media_session volume --stream 3 --set $VOL0 >/dev/null 2>&1
 sh rm -f /sdcard/s5-sampler.sh
