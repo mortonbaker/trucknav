@@ -144,3 +144,4 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
 | astra | `astra` | S6 on-device routing (new `routing/**`), or S4 YouTube (`YouTubePane.kt`) + S15 prefetch research | `routing/**`, `YouTubePane.kt`; `LocalAssetServer.kt` for S15 by agreement only | 100–119 | emulator `trucknav-tab-2` (5556) |
 
 Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/build.gradle`, `docs/BUILD-PLAN.md`, `docs/SMOKE-TEST.md`, `docs/BUGS.md`) — smallest possible commits, append-only in docs. Own branch in an own worktree (`git worktree add ~/trucknav-<track> -b <track>`); merge into `main` only under `claim.sh`, one merger at a time, build main before pushing. S8 (settings) is parked until S17's toggles exist.
+| 2026-09-20 15:21 | claude-vehicle | main = 0.21.0 / code 80 (S16 app side, S9 harness+runbook). Installing on the tablet + cockpit-smoke run; ~15 min. Emulator untouched. |
