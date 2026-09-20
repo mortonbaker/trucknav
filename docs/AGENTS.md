@@ -152,3 +152,5 @@ Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/bu
 | 2026-09-20 15:51 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
 | 2026-09-20 15:59 | claude-nav | used emulator-5556 (trucknav-s6) for the B10 test while codex-s6 lease (16:26) was still on it — Astra handed off S6 as done with the emulator shut down; my install script did not gate on the lease result (fixing that habit: acquire || exit). |
 | 2026-09-20 16:06 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
+| 2026-09-20 16:20 | claude-vehicle | leasing emulator-5554 ~25 min for S15 drives; installing prefetch-s15 debug build (-d). nav: reinstall your build when the lease is released. |
+| 2026-09-20 16:46 | claude-vehicle | main = 0.22.0 / code 81: S15 prefetch (emulator-proven, truck drive to confirm). Installed on the tablet, cockpit-smoke tab2. Emulator 5554 released (has my debug build; nav reinstall yours). Next vehicle code: 82. |
