@@ -25,6 +25,11 @@ import com.stadiamaps.ferrostar.composeui.views.components.controls.NavigationUI
 import com.stadiamaps.ferrostar.composeui.views.components.gridviews.InnerGridView
 import com.stadiamaps.ferrostar.maplibreui.runtime.NavigationMapState
 import kotlin.math.roundToInt
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,11 +49,27 @@ fun NotNavigatingOverlay(
 
   // Style switcher lives on the map in every state (centre-left is free in
   // both of Ferrostar's navigating layouts and in ours).
+  val foreign by com.morton.trucknav.nav.NavGuard.foreign.collectAsState()
   InnerGridView(
       modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
       centerStart = {
         NavigationUIButton(onClick = { showStyles = true }, buttonSize = DpSize(56.dp, 56.dp)) {
           Icon(LayersIcon, contentDescription = "Map style")
+        }
+      },
+      center = {
+        // Only one navigator: if another app is guiding, say so and offer the stop.
+        foreign?.let { f ->
+          androidx.compose.foundation.layout.Row(
+              Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp)).background(androidx.compose.ui.graphics.Color(0xFF8b1f1f)).padding(horizontal = 18.dp, vertical = 10.dp)
+                  .semantics { contentDescription = "Foreign navigator banner" },
+              verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text("${f.label} is navigating", color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Button(onClick = { com.morton.trucknav.nav.NavGuard.stopForeign("driver tapped Stop") }, modifier = Modifier.padding(start = 14.dp)) {
+              Text("Stop ${f.label}", fontSize = 18.sp)
+            }
+          }
         }
       },
   )
