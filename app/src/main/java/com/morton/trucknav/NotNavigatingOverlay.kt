@@ -133,18 +133,11 @@ fun NotNavigatingOverlay(
             )
           }
           if (scene.searchResults.isEmpty()) {
-<<<<<<< HEAD
             com.morton.trucknav.nav.QuickPlaces(
                 userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp),
                 onOpen = { panelTab = it },
                 onSet = { kind -> panelTab = null; focusTick++; com.morton.trucknav.nav.NavLog.log("quick", "set $kind: focus search") },
-            ) { name, c -> com.morton.trucknav.nav.NavLog.log("quick", "go $name"); viewModel.startNavigation(c, name) }
-=======
-            com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
-              com.morton.trucknav.nav.NavLog.log("quick", "preview ${q.name}")
-              viewModel.selectDestination(q.coordinate, q.name, DestinationSelectionOrigin.SearchResult)
-            }
->>>>>>> integrate-s6
+            ) { name, c -> panelTab = null; com.morton.trucknav.nav.NavLog.log("quick", "preview $name"); viewModel.selectDestination(c, name, DestinationSelectionOrigin.SearchResult) }   // preview with alternates first (operator 2026-09-20)
           }
         }
       }
