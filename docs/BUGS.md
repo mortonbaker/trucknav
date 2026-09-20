@@ -44,3 +44,7 @@ VictronConnect (BLE) showed SOC 26 %, 14.19 V, −0.40 A, −82.5 Ah on 2026-09-
 
 ## B9 — Truck boards drop off Wi-Fi and never come back (2026-09-20)
 Pi and relay board both went dark ~11:00 (hotspot vanished) and only returned after a power cycle. Pi: added `/data/starlink/wifi-watchdog.sh` (rescan + reconnect saved networks, bounce wlan0 after 5 min) and `iw dev wlan0 set power_save off`, both in `/data/rc.local`. Board: `EverythingPhone` added to `4runner.yaml` (priority 7), `use_address` removed. Still to watch: whether the board also needs a reboot-on-no-wifi (ESPHome `reboot_timeout` is 0s by operator choice).
+
+## B10 — Implausible GPS fixes are trusted (2026-09-20)
+Tablet indoors on USB, 4 satellites, mean C/N0 22: the gps provider delivered 33.1275,-96.2930 (55 mi from the real position), altitude 32 896 m, speed 33 m/s, hAcc 11.6. Ferrostar's AndroidLocationProvider forwarded it; routes were computed from it; the puck would have jumped 55 mi. Fix (S17.6): a plausibility gate in front of the location provider — reject fixes with altitude outside -500…6 000 m, speed > 60 m/s, hAcc > 150 m, or an implied jump > 250 km/h from the last accepted fix; log rejections to NavLog; show "GPS weak" in the status strip while rejecting.
+- Done when: replaying a captured garbage fix (emulator geo fix / `cmd location` test provider with alt 30 000) produces a `gps rejected` NavLog line and no puck/route change; a normal drive replay is unaffected.

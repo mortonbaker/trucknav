@@ -256,3 +256,14 @@ Branch `routing-s6`, base `2eaa770`, debug base version 0.18.0/code 52. AVD `tru
 Raw receipts and screenshot: `docs/evidence/s6/`. Native source evidence: `~/evidence/s6-native-20260920-152558/`; UI: `~/evidence/s6-ui-20260920-152655/`. Re-run with `bash docs/s6-smoke.sh native` / `ui` under the dedicated emulator lease.
 
 Setup fixes: shell-pushed asset ownership repaired on emulator backing storage; Android's first-run full-screen tutorial dismissed. Earlier UI run had a gray PMTiles basemap and parser errors; later rendered-screen run had no such errors. Root cause is not proven and this observation remains an integration follow-up, not a claimed fix. No changes to LocalAssetServer or shared services.
+
+### 2026-09-20 — v0.22.1 (S6 on-device routing integrated; tablet validation)
+
+| Check | Result |
+|---|---|
+| Server-first route (tablet, LAN) | `routing source=Server elapsed_ms=450`, NAVIGATING |
+| Server blocked (`docker stop valhalla` on homebackup, self-restoring after 100 s; tablet Wi-Fi untouched) → route to Ted Polk via the API | `routing source=On-device elapsed_ms=2070`, 49.3 mi / 18 steps, NAVIGATING, PSS 278 MB, 0 crashes |
+| Offline pack | `routing/valhalla_tiles.tar` 2.69 GB pushed over USB at 46.7 MB/s, SHA-256 verified on device |
+| Favorites via API after the merge | 8 favorites; tiles intact |
+
+Caveat found (B10): both routes started from a garbage GPS fix (4 satellites indoors: 33.1275,-96.2930, alt 32 896 m, 33 m/s), so absolute distances (60 mi / 49 mi) reflect that origin, not home (server says home→Costco 14.1 mi, home→Ted Polk 33.7 mi).

@@ -29,7 +29,7 @@ Order of work from here:
 | S5 | Books offline downloads | medium | DONE v0.17.1. |
 | S9 | Harness + runbook | small | DONE 0.21.0. |
 | S7 | Look and feel (icon, palette, typography) | small | Cosmetic; after the behaviour is right. |
-| S6 | On-device routing | large | Two sessions; biggest single win for no-signal driving. |
+| S6 | On-device routing | large | DONE 2026-09-20 (Astra, 0.22.x): server-first, on-device Valhalla fallback 2.1 s on the tablet. |
 | S8 | Settings pane | small | Operator said later. |
 | S10 | Pi ACL, Photon self-host, Kindles | operator | Desktop tasks. |
 | S15 | Tile prefetch along the route (B5) | medium | Research first (MapLibre prefetch, ambient cache, along-route warmup). |
