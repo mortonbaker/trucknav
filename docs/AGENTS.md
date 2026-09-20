@@ -56,3 +56,19 @@ docs/tablet-lock.sh 100.95.16.47:5555 release <agent>
 |---|---|---|
 | 2026-09-20 | claude-studio | S5 books offline downloads (tree + tablet during install/test windows) |
 | 2026-09-20 12:40 | claude-nav | S17 navigation on branch nav-s17 in worktree ~/trucknav-nav (no edits in ~/trucknav); tablet only when lease is free; merge when tree is free |
+
+## 5. Branches, worktrees, and who installs (added 12:50 after a second agent joined)
+
+- Feature work goes on a branch in its own worktree: `git worktree add ../trucknav-<slice> -b <slice>`.
+  Its build dir is separate, so two agents can compile at once. `main` in `~/trucknav` is the
+  install tree and is covered by the tree claim.
+- **Only `main` is installed on the tablet.** The tablet refuses a lower `versionCode`
+  (`INSTALL_FAILED_VERSION_DOWNGRADE` on release builds), so version numbers are handed out on
+  `main`, one at a time. To ship a branch: take the tree claim, merge into `main`, bump
+  `versionCode`/`versionName`, build from `~/trucknav`, install, commit. Never bump on a branch.
+- Do not amend or rebase another agent's commits on `main`; add a commit.
+- Current worktrees: `~/trucknav` = main (claude-studio, S5); `~/trucknav-nav` = `nav-s17`.
+
+| when | agent | scope |
+|---|---|---|
+| 2026-09-20 12:43 | (second agent) | S17 navigation, branch `nav-s17`, worktree `~/trucknav-nav` |
