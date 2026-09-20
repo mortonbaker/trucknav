@@ -1,0 +1,19 @@
+plugins { id 'com.android.library' }
+android {
+    namespace 'com.morton.trucknav.routing'
+    compileSdk 36
+    defaultConfig { minSdk 29 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+dependencies {
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:${libs.versions.kotlinx.coroutines.get()}"
+    implementation libs.ferrostar.core
+    implementation platform(libs.okhttp.bom)
+    implementation libs.okhttp.core
+    implementation 'io.github.rallista:valhalla-mobile:0.6.3'
+    testImplementation libs.junit
+    testImplementation libs.kotlinx.coroutines.test
+}
