@@ -18,6 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,13 +42,15 @@ fun DestinationSelectionBottomSheet(
     onStartNavigation: () -> Unit,
     onSheetHeightChanged: (Int) -> Unit,
 ) {
+  val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   Box(
       modifier = Modifier.fillMaxSize().systemBarsPadding(),
-      contentAlignment = Alignment.BottomCenter,
+      contentAlignment = if (landscape) Alignment.BottomEnd else Alignment.BottomCenter,
   ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().onSizeChanged { onSheetHeightChanged(it.height) },
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        // Landscape: a panel on the right, so the routes being compared stay in view on the left.
+        modifier = Modifier.fillMaxWidth(if (landscape) 0.46f else 1f).onSizeChanged { onSheetHeightChanged(if (landscape) 0 else it.height) },
+        shape = if (landscape) RoundedCornerShape(topStart = 28.dp) else RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         tonalElevation = 8.dp,
         shadowElevation = 8.dp,
     ) {
@@ -62,7 +72,7 @@ private fun DestinationSelectionBottomSheetContent(
 ) {
   Column(
       modifier =
-          modifier.padding(
+          modifier.verticalScroll(rememberScrollState()).padding(
               horizontal = 24.dp,
               vertical = 16.dp,
           )
@@ -83,9 +93,35 @@ private fun DestinationSelectionBottomSheetContent(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    // Route candidates (time · distance · via): tap to choose, Start uses it as-is.
+    val scene by com.morton.trucknav.AppModule.viewModel.sceneState.collectAsState()
+    if (scene.preview.isEmpty()) {
+      Text("Finding routes…", modifier = Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+      val cards: @Composable (Modifier) -> Unit = { m ->
+        scene.preview.forEachIndexed { i, c ->
+          val sel = i == scene.previewSelected
+          androidx.compose.foundation.layout.Column(
+              m.heightIn(min = 64.dp)
+                  .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                  .background(if (sel) androidx.compose.ui.graphics.Color(0xFF1f5f8b) else androidx.compose.ui.graphics.Color(0xFF1a2028))
+                  .clickable { com.morton.trucknav.AppModule.viewModel.selectPreview(i) }
+                  .padding(12.dp)
+                  .semantics { contentDescription = "Route " + (i + 1) + ": " + c.label },
+          ) {
+            Text("${c.minutes} min", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("${"%.1f".format(c.miles)} mi" + if (c.via.isNotBlank()) " · via ${c.via}" else "", color = androidx.compose.ui.graphics.Color(0xFFaab4c0), style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+          }
+        }
+      }
+      val landscapeCards = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+      if (landscapeCards) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) { cards(Modifier.fillMaxWidth()) }
+      else androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) { cards(Modifier.weight(1f)) }
+    }
     Button(
         onClick = onStartNavigation,
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp).heightIn(min = 48.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 48.dp),
+        enabled = scene.preview.isNotEmpty(),
     ) {
       Text(stringResource(R.string.start_navigation))
     }
@@ -93,7 +129,7 @@ private fun DestinationSelectionBottomSheetContent(
     var saved by androidx.compose.runtime.remember(destination) { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val label = destination.label?.takeUnless { it.isBlank() } ?: stringResource(R.string.dropped_pin_title)
     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-      for ((kind, title) in listOf(com.morton.trucknav.nav.Favorites.HOME to "Save as Home", com.morton.trucknav.nav.Favorites.WORK to "Save as Work", com.morton.trucknav.nav.Favorites.PLACE to "Save place")) {
+      for ((kind, title) in listOf(com.morton.trucknav.nav.Favorites.HOME to "Home", com.morton.trucknav.nav.Favorites.WORK to "Work", com.morton.trucknav.nav.Favorites.PLACE to "Save place")) {
         OutlinedButton(onClick = { com.morton.trucknav.nav.Favorites.save(label, destination.coordinate, kind); saved = kind }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
           Text(if (saved == kind) "Saved" else title, maxLines = 1)
         }

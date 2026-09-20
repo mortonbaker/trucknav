@@ -45,6 +45,8 @@ data class DemoNavigationSceneState(
     val isDestinationSheetVisible: Boolean = false,
     val destinationSheetHeightPx: Int = 0,
     val searchResults: List<PhotonHit> = emptyList(),
+    val preview: List<com.morton.trucknav.nav.RouteCandidate> = emptyList(),
+    val previewSelected: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -130,8 +132,17 @@ class DemoNavigationViewModel(
             selectedDestination =
                 DestinationSelection(coordinate = coordinate, label = label, origin = origin),
             isDestinationSheetVisible = true,
+            preview = emptyList(), previewSelected = 0,
         )
+    previewJob?.cancel()
+    previewJob = viewModelScope.launch {
+      val from = location.value ?: return@launch
+      val c = com.morton.trucknav.nav.RoutePreview.candidates(from, coordinate)
+      if (_sceneState.value.selectedDestination?.coordinate == coordinate) _sceneState.value = _sceneState.value.copy(preview = c, previewSelected = 0)
+    }
   }
+  private var previewJob: kotlinx.coroutines.Job? = null
+  fun selectPreview(i: Int) { _sceneState.value = _sceneState.value.copy(previewSelected = i) }
 
   fun selectDestination(
       location: Location,
@@ -152,6 +163,7 @@ class DemoNavigationViewModel(
         _sceneState.value.copy(
             droppedPin = null,
             selectedDestination = null,
+            preview = emptyList(), previewSelected = 0,
             isDestinationSheetVisible = false,
             destinationSheetHeightPx = 0,
         )
@@ -173,9 +185,22 @@ class DemoNavigationViewModel(
   }
 
   fun startSelectedDestinationNavigation() {
-    val destination = sceneState.value.selectedDestination ?: return
+    val st = sceneState.value
+    val destination = st.selectedDestination ?: return
+    val chosen = st.preview.getOrNull(st.previewSelected)
     clearSelectedDestination()
-    startNavigation(destination.coordinate, destination.label)
+    if (chosen != null) startWithRoute(chosen.route, destination.coordinate, destination.label) else startNavigation(destination.coordinate, destination.label)
+  }
+
+  // Start (or replace) with a route the driver already saw and chose: no second fetch.
+  private fun startWithRoute(route: uniffi.ferrostar.Route, destination: GeographicCoordinate, name: String?) {
+    val gen = ++navGeneration
+    com.morton.trucknav.nav.Favorites.noteDestination(name, destination)
+    com.morton.trucknav.nav.NavLog.log("start", "gen=$gen preview route ${"%.1f".format(route.distance / 1609.344)}mi to=$destination name=$name")
+    if (simulated.value) locationProvider.enableSimulationOn(route)
+    if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
+    if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route)
+    acceptRouteSource(route)
   }
 
   override fun toggleMute() {

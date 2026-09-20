@@ -192,6 +192,19 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
     com.morton.trucknav.nav.NavLog.log("overview", "fit ${pts.size} pts zoom=${"%.2f".format(cam.zoom)} pad=$pad")
   }
 
+  // Preview: fit the chosen candidate and the puck under the sheet.
+  LaunchedEffect(sceneState.preview, sceneState.previewSelected) {
+    val c = sceneState.preview.getOrNull(sceneState.previewSelected) ?: return@LaunchedEffect
+    if (mapSize.width == 0) return@LaunchedEffect
+    val pts = c.route.geometry + listOfNotNull(viewModel.navigationUiState.value.location?.coordinates)
+    val mapW = with(density) { mapSize.width.toDp() }; val mapH = with(density) { mapSize.height.toDp() }
+    val sheet = with(density) { sceneState.destinationSheetHeightPx.toDp() }
+    val pad = if (landscape) PaddingValues(start = 24.dp, top = 100.dp, end = mapW * 0.46f + 16.dp, bottom = 24.dp)
+              else PaddingValues(start = 24.dp, top = 100.dp, end = 24.dp, bottom = minOf(sheet + 16.dp, mapH * 0.6f))
+    navigationMapState.cameraMode = com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.FREE
+    navigationMapState.cameraState.animateTo(fitCamera(pts, mapW, mapH, pad), duration = kotlin.time.Duration.parse("600ms"))
+  }
+
   // Rotation recreates the activity and the camera comes back in browsing mode
   // (top-down, centred) even though navigation is still running. Put it back in
   // the navigating camera whenever the orientation changes mid-route.
@@ -253,6 +266,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   ) { ui ->
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
+    com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected)
     com.morton.trucknav.nav.SearchResultsOverlay(sceneState.searchResults) { hit ->
       viewModel.setSearchResults(emptyList())
       viewModel.selectDestination(

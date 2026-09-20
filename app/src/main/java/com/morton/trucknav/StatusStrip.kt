@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,9 +114,10 @@ fun StatusStrip(modifier: Modifier = Modifier) {
         onDispose { ctx.unregisterReceiver(r) }
     }
 
+    val rejecting by com.morton.trucknav.nav.SaneLocationProvider.rejecting.collectAsState()
     val fixAge = if (fixAt == 0L) null else (now - fixAt) / 1000
-    val gpsText = when { fixAge == null -> "no fix"; fixAge < 10 -> "GPS"; fixAge < 3600 -> "${fixAge}s ago"; else -> "stale" }
-    val gpsOk = fixAge != null && fixAge < 10
+    val gpsText = when { rejecting -> "GPS weak"; fixAge == null -> "no fix"; fixAge < 10 -> "GPS"; fixAge < 3600 -> "${fixAge}s ago"; else -> "stale" }
+    val gpsOk = !rejecting && fixAge != null && fixAge < 10
 
     Row(
         modifier.fillMaxWidth().height(28.dp).background(Color(0xFF07090c)).padding(horizontal = 12.dp),

@@ -47,7 +47,7 @@ object AppModule {
 
     val locationProvider: NavigationLocationProvider by lazy {
         NavigationLocationProvider(
-            liveProviding = AndroidLocationProvider(appContext),
+            liveProviding = com.morton.trucknav.nav.SaneLocationProvider(AndroidLocationProvider(appContext)),   // B10: drop implausible fixes
             simulatedProvider = SimulatedLocationProvider(
                 warpFactor = 2u,
                 initialLocation = initialSimulatedLocation.toAndroidLocation(),
