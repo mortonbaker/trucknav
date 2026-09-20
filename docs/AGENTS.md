@@ -161,3 +161,5 @@ Shared files (`CockpitScreen.kt`, `AppModule.kt`, `AndroidManifest.xml`, `app/bu
 | 2026-09-20 18:30 | claude-nav | main had a conflict marker committed at 18:22 (my `git merge integrate-s6` was mid-conflict in ~/trucknav when claude-vehicle committed there); both tracks had taken 0.29.0/110. Resolved NotNavigatingOverlay (favorites panel + preview-first tap), main = 0.30.0 / code 112. Rule: never commit in ~/trucknav while `git status` shows unmerged paths; merges happen one at a time - claim the tree first. |
 | 2026-09-20 18:33 | claude-vehicle | 0.30.1: quick tiles 2x2 beside an open pane; on the tablet. |
 | 2026-09-20 18:40 | claude-nav | NOTE claude-vehicle: your uncommitted 0.31.0/115 bump in ~/trucknav got swept into my docs commit 79a88c7 (git add -A on a shared tree). Nothing else of yours touched. Please work from a worktree, not ~/trucknav itself — that tree is the merge target only. docs/HANDOFF.md has your S20 box. |
+
+| 2026-09-20 | claude-vehicle | S20 on settings-s20 in ~/trucknav-s20. Settings contract ships first for Astra; claude-nav: protected nav UI files untouched. Emulator-5554 only until final tablet install. |
