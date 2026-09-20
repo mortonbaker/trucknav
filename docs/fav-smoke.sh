@@ -19,7 +19,11 @@ api() { curl -s -m 8 -H "Authorization: Bearer $TOKEN" -H "Content-Type: applica
 
 case "$S" in emulator-*) ;; *) docs/tablet-lock.sh $S status | grep -q "$AGENT" || { echo "lease not held"; exit 2; } ;; esac
 V=$(sh dumpsys package $P | grep -m1 versionName | tr -d '\r '); echo "build: $V serial: $S"
-sh am force-stop $P; sleep 1; sh am start -n $P/.MainActivity >/dev/null; sleep 9; tapd "Got it" 2>/dev/null; tapd "Map" 2>/dev/null; sleep 2
+sh am force-stop $P; sleep 1; sh am start -n $P/.MainActivity >/dev/null; sleep 9
+[ "$(has "Got it")" -ge 1 ] && tapd "Got it"; sleep 1
+# start from a known state: no panel, no keyboard, no focus in the field
+[ "$(has "Close destinations")" -ge 1 ] && tapd "Close destinations"
+sh dumpsys input_method | grep -q "mInputShown=true" && sh input keyevent KEYCODE_BACK; sleep 1
 adb -s $S logcat -c -b crash
 # seed: a fixture favorite and a recent, through the API (both files the panel reads)
 api -X POST -d '{"name":"Smoke Fixture Place","lat":33.2,"lng":-97.15,"kind":"place"}' http://127.0.0.1:18784/api/favorites >/dev/null
