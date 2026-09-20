@@ -82,17 +82,26 @@ class BooksPlayerService : MediaSessionService() {
                 return super.onCustomCommand(s, controller, customCommand, args)
             }
         }).build()
-        try { getSystemService(android.net.ConnectivityManager::class.java).registerDefaultNetworkCallback(netCb) } catch (e: Exception) { Log.w(TAG, "network callback: $e") }
+        try {
+            val req = android.net.NetworkRequest.Builder().addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+            getSystemService(android.net.ConnectivityManager::class.java).registerNetworkCallback(req, netCb)
+        } catch (e: Exception) { Log.w(TAG, "network callback: $e") }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     // Coming back from a dead zone: push queued positions as soon as a network
-    // exists, whether or not the player is ticking (it may be paused).
+    // exists, whether or not the player is ticking (it may be paused). Any
+    // INTERNET network, not the default one: with Tailscale always on, the
+    // app's default network is the VPN and it does not change when Wi-Fi flaps.
     private val netCb = object : android.net.ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: android.net.Network) {
-            scope.launch(Dispatchers.IO) { repeat(4) { i -> delay(if (i == 0) 2_000 else 8_000); if (flushQueue()) return@launch } }
-        }
+        override fun onAvailable(network: android.net.Network) { Log.i(TAG, "network available: $network"); retryFlush() }
+    }
+    private var flushJob: Job? = null
+    // MagicDNS needs a few seconds after Wi-Fi returns, so keep trying until the queue is empty.
+    private fun retryFlush() {
+        if (flushJob?.isActive == true) return
+        flushJob = scope.launch(Dispatchers.IO) { repeat(30) { i -> delay(if (i == 0) 2_000 else 10_000); if (flushQueue()) return@launch } }
     }
 
     // media3 drops the service out of the foreground when the player pauses; on
@@ -217,7 +226,7 @@ class BooksPlayerService : MediaSessionService() {
             val ok = sid != null && AbsClient.sync(sid, t, listened, dur)
             if (!ok) prefs.edit().putString("queued_$id", "$t|$dur|$now").apply()
             Log.i(TAG, "sync $why t=${t.toInt()} source=$source ${if (ok) "ok" else "queued"}")
-            flushQueue()
+            if (!flushQueue()) retryFlush()
         }
     }
 

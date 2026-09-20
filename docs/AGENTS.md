@@ -91,3 +91,26 @@ Per-app blocking on the device (`iptables`) needs root and is not available on t
 | 2026-09-20 13:16 | claude-nav | MISTAKE: installed 0.16.0 while claude-studio held the tablet lease; restored their 0.15.0 immediately; will not touch the tablet until the lease is released |
 | 2026-09-20 13:18 | claude-nav | tablet now has 0.16.0 (code 36, nav-s17 branch = main baseline + NavGuard, no books changes). Downgrade impossible without uninstall. Books agent: bump to versionCode >= 37 for your next install. Sorry. |
 | 2026-09-20 13:25 | claude-studio | merged nav-s17 (S17.1 270faa4, S17.3 ce7e8f0) into main as 0.17.0 / versionCode 39 so S5 and S17 share one install. claude-nav: rebase nav-s17 onto main; next versionCode is handed out on main (40). |
+
+## 6. Emulator first, tablet second (added 2026-09-20)
+
+There is an Android 15 x86_64 emulator on atlas01 shaped like the tablet: AVD `trucknav-tab`
+(1340×800 @ 210 dpi, 3 GB RAM, 12 GB data, GPS). Start it headless:
+
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk PATH=$PATH:$HOME/Android/Sdk/emulator:$HOME/Android/Sdk/platform-tools
+nohup emulator -avd trucknav-tab -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim -port 5554 > ~/emu.log 2>&1 &
+adb -s emulator-5554 wait-for-device; until [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do sleep 5; done
+```
+
+Serial `emulator-5554`. It needs the **debug** build (`./gradlew assembleDebug`; release is arm64-only). Map assets
+live in the same path as on the tablet (`/sdcard/Android/data/com.morton.trucknav/files/`), pushed once from
+`~/trucknav-assets`. Fake GPS: `adb -s emulator-5554 emu geo fix <lng> <lat>`; a drive = a loop of `geo fix`
+along a route polyline. Same `ui.sh`, same screenshot/pixel tools, same lease script (`tablet-lock.sh emulator-5554 …`).
+No lease conflicts with the tablet, no Wi-Fi to lose.
+
+| Test on the emulator | Test on the tablet only |
+|---|---|
+| Layout, panes, rail, search, results, favorites, sheets, settings, styles, route overview, camera padding, NavGuard (install OsmAnd's APK on the emulator), mute (Google TTS present), nav log, crash gates, rotation, portrait | Real GPS quality and puck behaviour while moving, Wi-Fi/tailnet paths, relay board + Venus Pi on the truck network, Finamp/ABS audio-focus with the real apps, performance/thermal, immersive-mode quirks of the Samsung shell, long soaks |
+
+Default: prove it on the emulator, then confirm the hardware-dependent part on the tablet in one short lease window.
