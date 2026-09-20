@@ -1,0 +1,18 @@
+--------- beginning of main
+09-20 15:26:04.648  8578  8578 I NavLog  : 15:26:04.634 init navlog /storage/emulated/0/Android/data/com.morton.trucknav/files/navlog
+09-20 15:26:11.782  8578  8593 I S6Smoke : server_elapsed_ms=1876 bytes=398818
+09-20 15:26:11.782  8578  8593 I S6Smoke : server_distance_m=287852.625
+09-20 15:26:13.184  8578  8709 I S6Smoke : source=Server elapsed_ms=563 distance_m=287852.625
+09-20 15:26:13.185  8578  8593 I S6Smoke : healthy_server_preferred=PASS
+09-20 15:26:13.201  8578  8601 I S6Smoke : fallback to on-device
+09-20 15:26:14.352  8578  8601 I S6Smoke : source=On-device elapsed_ms=1165 distance_m=287852.625
+09-20 15:26:14.386  8578  8593 I S6Smoke : local_run=1 elapsed_ms=1168 distance_m=287852.625 delta=0.0 total_pss_kib=257681 native_pss_kib=92164 steps=65
+09-20 15:26:14.401  8578  8601 I S6Smoke : fallback to on-device
+09-20 15:26:14.793  8578  8601 I S6Smoke : source=On-device elapsed_ms=407 distance_m=287852.625
+09-20 15:26:14.823  8578  8593 I S6Smoke : local_run=2 elapsed_ms=407 distance_m=287852.625 delta=0.0 total_pss_kib=263401 native_pss_kib=93674 steps=65
+09-20 15:26:14.829  8578  8601 I S6Smoke : fallback to on-device
+09-20 15:26:14.831  8578  8593 I S6Smoke : outside_coverage=PASS No offline route was found. Choose roads inside the installed routing region, or reconnect and retry.
+09-20 15:26:14.838  8578  8593 I S6Smoke : missing_pack=PASS
+09-20 15:26:17.851  8578  8660 I S6Smoke : fallback to on-device
+09-20 15:26:18.322  8578  8660 I S6Smoke : source=On-device elapsed_ms=3476 distance_m=287852.625
+09-20 15:26:18.322  8578  8593 I S6Smoke : stalled_server_fallback_ms=3478

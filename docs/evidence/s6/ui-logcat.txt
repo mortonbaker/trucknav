@@ -1,0 +1,25 @@
+--------- beginning of main
+09-20 15:27:00.743  8974  8974 I NavLog  : 15:27:00.741 init navlog /storage/emulated/0/Android/data/com.morton.trucknav/files/navlog
+09-20 15:27:11.244  8974  8974 I NavLog  : 15:27:11.239 start gen=1 to=GeographicCoordinate(lat=35.4676, lng=-97.5164) name=S6 acceptance destination
+09-20 15:27:11.422  8974  9047 I NavLog  : 15:27:11.421 routing fallback to on-device
+09-20 15:27:13.938  8974  9047 I NavLog  : 15:27:13.938 routing source=On-device elapsed_ms=2692 distance_m=287852.469
+09-20 15:27:13.944  8974  8974 I NavLog  : 15:27:13.944 route fetched gen=1 distance=178.9mi duration=155min steps=65 points=2639 to=GeographicCoordinate(lat=35.467618, lng=-97.516416)
+09-20 15:27:14.131  8974  9039 I NavLog  : 15:27:14.131 state NAVIGATING trip=Navigating
+09-20 15:27:14.131  8974  9039 I NavLog  : 15:27:14.131 visual "Oak Knoll Road" type=TURN mod=LEFT trigger=232m road=Smoky Oak Trail stepIdx=0 secondary="null" @33.08012,-97.20466 brg=174 spd=-
+09-20 15:27:14.132  8974  9039 I NavLog  : 15:27:14.131 spoken "Drive south on Smoky Oak Trail. Then Turn left onto Oak Knoll Road." trigger=232m @33.08012,-97.20466 brg=174 spd=-
+09-20 15:27:14.132  8974  9039 I NavLog  : 15:27:14.132 deviation NoDeviation @33.08012,-97.20466 brg=174 spd=-
+09-20 15:27:14.132  8974  9039 I NavLog  : 15:27:14.132 progress remaining=178.86mi eta=155min nextManeuver=231m road=Smoky Oak Trail steps=65 @33.08012,-97.20466 brg=174 spd=-
+09-20 15:27:15.441  8974  8974 I NavLog  : 15:27:15.428 mute isMuted=true
+09-20 15:27:15.732  8974  8974 I NavLog  : 15:27:15.731 mute isMuted=false
+09-20 15:27:16.381  8974  8974 I NavLog  : 15:27:16.360 overview fit 2640 pts zoom=6.68 pad=PaddingValues(start=295.61905.dp, top=24.0.dp, end=32.0.dp, bottom=32.0.dp)
+09-20 15:27:21.352  8974  8988 I S6Smoke : navigating_total_pss_kib=275118
+09-20 15:27:21.616  8974  8974 I NavLog  : 15:27:21.616 stop gen=2 caller=DemoNavigationViewModel.stopNavigation:246 < DemoNavigationSceneKt.DemoNavigationScene$lambda$23$0:236 < DemoNavigationSceneKt.$r8$lambda$NtOi00akztE_Ict51K_KSqPMJe4:0 < DemoNavigationSceneKt$$ExternalSyntheticLambda8.invoke:0
+09-20 15:27:21.630  8974  9078 I NavLog  : 15:27:21.630 state IDLE trip=Idle
+09-20 15:27:21.631  8974  9078 I NavLog  : 15:27:21.631 deviation none @33.08009,-97.20497 brg=- spd=0.0
+09-20 15:27:21.680  8974  8974 I NavLog  : 15:27:21.680 start gen=3 to=GeographicCoordinate(lat=35.4676, lng=-97.5164) name=S6 canceled request
+09-20 15:27:21.683  8974  8974 I NavLog  : 15:27:21.683 stop gen=4 caller=DemoNavigationViewModel.stopNavigation:246 < S6RoutingTest.offlineStartEndAndLateResultContract$lambda$11:89 < S6RoutingTest$$ExternalSyntheticLambda13.run:0 < Executors$RunnableAdapter.call:487
+09-20 15:27:27.835  8974  8974 I NavLog  : 15:27:27.835 start gen=5 to=GeographicCoordinate(lat=51.5074, lng=-0.1278) name=Outside offline coverage
+09-20 15:27:28.037  8974  9039 I NavLog  : 15:27:28.035 routing fallback to on-device
+09-20 15:27:28.052  8974  8974 I NavLog  : 15:27:28.050 route-error gen=5 RoutingUnavailable: No offline route was found. Choose roads inside the installed routing region, or reconnect and retry.
+09-20 15:27:28.304  8974  8988 I S6Smoke : route_error_dialog=PASS
+09-20 15:27:28.304  8974  8988 I S6Smoke : ui_start_footer_mute_overview_recenter_end_cancel=PASS screenshot=s6-offline-routing.png

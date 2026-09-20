@@ -45,6 +45,8 @@ data class DemoNavigationSceneState(
     val isDestinationSheetVisible: Boolean = false,
     val destinationSheetHeightPx: Int = 0,
     val searchResults: List<PhotonHit> = emptyList(),
+    val preview: List<com.morton.trucknav.nav.RouteCandidate> = emptyList(),
+    val previewSelected: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -130,8 +132,17 @@ class DemoNavigationViewModel(
             selectedDestination =
                 DestinationSelection(coordinate = coordinate, label = label, origin = origin),
             isDestinationSheetVisible = true,
+            preview = emptyList(), previewSelected = 0,
         )
+    previewJob?.cancel()
+    previewJob = viewModelScope.launch {
+      val from = location.value ?: return@launch
+      val c = com.morton.trucknav.nav.RoutePreview.candidates(from, coordinate)
+      if (_sceneState.value.selectedDestination?.coordinate == coordinate) _sceneState.value = _sceneState.value.copy(preview = c, previewSelected = 0)
+    }
   }
+  private var previewJob: kotlinx.coroutines.Job? = null
+  fun selectPreview(i: Int) { _sceneState.value = _sceneState.value.copy(previewSelected = i) }
 
   fun selectDestination(
       location: Location,
@@ -152,6 +163,7 @@ class DemoNavigationViewModel(
         _sceneState.value.copy(
             droppedPin = null,
             selectedDestination = null,
+            preview = emptyList(), previewSelected = 0,
             isDestinationSheetVisible = false,
             destinationSheetHeightPx = 0,
         )
@@ -173,9 +185,22 @@ class DemoNavigationViewModel(
   }
 
   fun startSelectedDestinationNavigation() {
-    val destination = sceneState.value.selectedDestination ?: return
+    val st = sceneState.value
+    val destination = st.selectedDestination ?: return
+    val chosen = st.preview.getOrNull(st.previewSelected)
     clearSelectedDestination()
-    startNavigation(destination.coordinate, destination.label)
+    if (chosen != null) startWithRoute(chosen.route, destination.coordinate, destination.label) else startNavigation(destination.coordinate, destination.label)
+  }
+
+  // Start (or replace) with a route the driver already saw and chose: no second fetch.
+  private fun startWithRoute(route: uniffi.ferrostar.Route, destination: GeographicCoordinate, name: String?) {
+    val gen = ++navGeneration
+    com.morton.trucknav.nav.Favorites.noteDestination(name, destination)
+    com.morton.trucknav.nav.NavLog.log("start", "gen=$gen preview route ${"%.1f".format(route.distance / 1609.344)}mi to=$destination name=$name")
+    if (simulated.value) locationProvider.enableSimulationOn(route)
+    if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
+    if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route)
+    acceptRouteSource(route)
   }
 
   override fun toggleMute() {
@@ -198,47 +223,52 @@ class DemoNavigationViewModel(
   // Bumped on every start/stop; a route fetch only applies if nobody stopped
   // (or restarted) navigation while it was in flight.
   private var navGeneration = 0
+  private var routeJob: kotlinx.coroutines.Job? = null
+  private val _routeError = MutableStateFlow<String?>(null)
+  val routeError = _routeError.asStateFlow()
+  private val _routeSource = MutableStateFlow<com.morton.trucknav.routing.RouteSource?>(null)
+  val routeSource = _routeSource.asStateFlow()
+  fun dismissRouteError() { _routeError.value = null }
+  fun acceptRouteSource(route: uniffi.ferrostar.Route) {
+    _routeSource.value = AppModule.routing.sourceOf(route)
+  }
 
   fun startNavigation(destination: GeographicCoordinate, name: String? = null) {
     val gen = ++navGeneration
+    routeJob?.cancel()
+    _routeError.value = null
     com.morton.trucknav.nav.Favorites.noteDestination(name, destination)
     com.morton.trucknav.nav.NavLog.log("start", "gen=$gen to=$destination name=$name caller=${com.morton.trucknav.nav.NavLog.caller()}")
-    viewModelScope.launch(Dispatchers.IO) {
-      // TODO: Fail gracefully
-      val lastLocation = location.value ?: run { com.morton.trucknav.nav.NavLog.log("start", "gen=$gen aborted: no location"); return@launch }
-
-      // TODO: Add label to waypoint?
-      // TODO: Assign the destination to the `NavigationManagerBridge`
-      Log.d(TAG, "fetching route to $destination with name $name")
-      val routes =
-          ferrostarCore.getRoutes(
-              lastLocation,
-              listOf(
-                  Waypoint(coordinate = destination, kind = WaypointKind.BREAK),
-              ),
-          )
-
-      val route = routes.first()
-      com.morton.trucknav.nav.NavLog.route("fetched gen=$gen", route)
-      if (gen != navGeneration) { com.morton.trucknav.nav.NavLog.log("start", "gen=$gen dropped: navigation was stopped/restarted while fetching (now gen=$navGeneration)"); return@launch }
-
-      if (simulated.value) {
-        locationProvider.enableSimulationOn(route)
-      }
-
-      // Android Auto rule: one navigator. We are the host, so we win.
-      if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
-
-      if (navigationUiState.value.isNavigating()) {
-        ferrostarCore.replaceRoute(route = route)
-      } else {
-        ferrostarCore.startNavigation(route = route)
+    // Apply navigation state on Main, so End cannot race between the generation check and start.
+    routeJob = viewModelScope.launch {
+      try {
+        val lastLocation = location.value ?: throw com.morton.trucknav.routing.RoutingUnavailable("Waiting for a GPS location. Try again after a location fix.")
+        val routes = ferrostarCore.getRoutes(lastLocation, listOf(Waypoint(coordinate = destination, kind = WaypointKind.BREAK)))
+        val route = routes.firstOrNull() ?: throw com.morton.trucknav.routing.RoutingUnavailable("No route was found.")
+        if (gen != navGeneration) return@launch
+        com.morton.trucknav.nav.NavLog.route("fetched gen=$gen", route)
+        if (simulated.value) locationProvider.enableSimulationOn(route)
+        if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
+        if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route)
+        else ferrostarCore.startNavigation(route)
+        acceptRouteSource(route)
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        if (gen == navGeneration) {
+          _routeError.value = (e as? com.morton.trucknav.routing.RoutingUnavailable)?.message
+              ?: "Could not calculate a route. Check connectivity or the offline routing pack, then retry."
+          com.morton.trucknav.nav.NavLog.log("route-error", "gen=$gen ${e.javaClass.simpleName}: ${e.message}")
+        }
       }
     }
   }
 
   override fun stopNavigation() {
     navGeneration++
+    routeJob?.cancel()
+    _routeSource.value = null
+    _routeError.value = null
     com.morton.trucknav.nav.NavLog.log("stop", "gen=$navGeneration caller=${com.morton.trucknav.nav.NavLog.caller()}")
     locationProvider.disableSimulation()
     ferrostarCore.stopNavigation()

@@ -2,6 +2,8 @@ package com.morton.trucknav
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +33,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.runtime.SideEffect
@@ -88,6 +92,7 @@ fun MapStyleSheet(onDismiss: () -> Unit) {
                 }
             }
         }
+      Column(Modifier.verticalScroll(rememberScrollState())) {
         Text("Map style", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MapStyle.entries.forEach { s ->
@@ -104,7 +109,31 @@ fun MapStyleSheet(onDismiss: () -> Unit) {
                 }
             }
         }
+        // Voice: which announcement classes are spoken. Big toggles, one tap.
+        val off by com.morton.trucknav.nav.NavPrefs.disabledClasses.collectAsState()
+        val autoNight by com.morton.trucknav.nav.NavPrefs.autoNight.collectAsState()
+        Text("Voice", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = 12.dp, bottom = 6.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.morton.trucknav.nav.VoiceGate.CLASSES.forEach { cls ->
+                val on = cls !in off
+                Column(
+                    Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Color(0xFF1f5f8b) else Color(0xFF1a2028))
+                        .clickable { com.morton.trucknav.nav.NavPrefs.setClass(cls, !on) }
+                        .semantics { contentDescription = "Voice " + cls + " " + (if (on) "on" else "off") },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(cls.replaceFirstChar { it.uppercase() }, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(if (on) "on" else "off", color = if (on) Color.White else Color(0xFF9aa5b1), fontSize = 12.sp)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Auto night map (dark after civil dusk)", color = Color.White, fontSize = 17.sp)
+            androidx.compose.material3.Switch(checked = autoNight, onCheckedChange = { com.morton.trucknav.nav.NavPrefs.setAutoNight(it) },
+                modifier = Modifier.semantics { contentDescription = "Auto night" })
+        }
         androidx.compose.foundation.layout.Spacer(Modifier.height(24.dp))
+      }
     }
 }
 

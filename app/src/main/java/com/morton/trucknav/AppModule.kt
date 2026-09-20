@@ -40,6 +40,9 @@ object AppModule {
         appContext = context.applicationContext
         com.morton.trucknav.nav.NavLog.init(appContext)
         com.morton.trucknav.nav.Favorites.init(appContext)
+        com.morton.trucknav.nav.NavPrefs.gate = voiceGate
+        com.morton.trucknav.nav.NavPrefs.init(appContext)
+        com.morton.trucknav.nav.NightMode.start()
         api.start()
         MapStyles.init(appContext)
         assets.start()
@@ -47,7 +50,7 @@ object AppModule {
 
     val locationProvider: NavigationLocationProvider by lazy {
         NavigationLocationProvider(
-            liveProviding = AndroidLocationProvider(appContext),
+            liveProviding = com.morton.trucknav.nav.SaneLocationProvider(AndroidLocationProvider(appContext)),   // B10: drop implausible fixes
             simulatedProvider = SimulatedLocationProvider(
                 warpFactor = 2u,
                 initialLocation = initialSimulatedLocation.toAndroidLocation(),
@@ -62,10 +65,14 @@ object AppModule {
         FerrostarForegroundServiceManager(appContext, DefaultForegroundNotificationBuilder(appContext))
     }
 
+    val routing by lazy {
+        com.morton.trucknav.routing.HybridRouteProvider(appContext, valhallaUrl, okHttp,
+            log = { com.morton.trucknav.nav.NavLog.log("routing", it) })
+    }
+
     val ferrostarCore: FerrostarCore by lazy {
-        val options = mapOf("units" to "miles")
         val core = FerrostarCore(
-            WellKnownRouteProvider.Valhalla(valhallaUrl, "auto").withJsonOptions(options),
+            routing,
             httpClient = httpClient,
             locationProvider = locationProvider,
             foregroundServiceManager = foregroundServiceManager,
@@ -80,7 +87,7 @@ object AppModule {
         core.alternativeRouteProcessor = AlternativeRouteProcessor { it, routes ->
             val navigating = it.state.value.tripState is uniffi.ferrostar.TripState.Navigating
             com.morton.trucknav.nav.NavLog.log("reroute", "alternates=${routes.size} navigating=$navigating -> ${if (navigating && routes.isNotEmpty()) "replace" else "ignore"}")
-            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); it.replaceRoute(routes.first()) }
+            if (navigating && routes.isNotEmpty()) { com.morton.trucknav.nav.NavLog.route("reroute", routes.first()); it.replaceRoute(routes.first()); viewModel.acceptRouteSource(routes.first()) }
         }
         core
     }
