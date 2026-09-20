@@ -56,3 +56,19 @@ docs/tablet-lock.sh 100.95.16.47:5555 release <agent>
 |---|---|---|
 | 2026-09-20 | claude-studio | S5 books offline downloads (tree + tablet during install/test windows) |
 | 2026-09-20 12:40 | claude-nav | S17 navigation on branch nav-s17 in worktree ~/trucknav-nav (no edits in ~/trucknav); tablet only when lease is free; merge when tree is free |
+
+## 5. Offline / no-network tests on a Wi-Fi-connected device (added 2026-09-20 after an agent cut its own adb)
+
+The tablet's only adb link is Wi-Fi. Anything that takes Wi-Fi down takes adb down. Rules, in order of preference:
+
+1. **Block the server, not the tablet.** For "app works when the server is gone" tests, stop or firewall the *service* for a bounded time from its host, with the restore scheduled before the block:
+   - Audiobookshelf / Valhalla / Photon on homebackup: `ssh homebackup "sudo sh -c 'nft insert rule inet filter input ip saddr <tablet-ip> tcp dport <port> drop; sleep 120; nft flush chain inet filter input'"`, or simply `sudo systemctl stop <svc>; sleep 120; sudo systemctl start <svc>` — run under `nohup`/`setsid` so an ssh drop cannot leave it stopped.
+   - Venus MQTT: stop the Pi's broker, never the Pi's Wi-Fi.
+   adb stays up the whole time and the app sees exactly the failure the driver would.
+2. **Whole-network loss (basemap, offline routing):** only with an **on-device self-restoring cut**, started from the tablet, capped at 60 s, and only after a positive check that the restore command exists:
+   `adb shell "nohup sh -c 'svc wifi disable; sleep 45; svc wifi enable' >/dev/null 2>&1 &"` then poll `adb connect` until it returns. Airplane mode (`cmd connectivity airplane-mode enable`) follows the same rule. Never run `svc wifi disable` alone, never from a foreground shell, never for longer than the restore timer.
+3. **Longer outages** (5 min offline-book test, soak): require **USB adb** — plug the tablet in and use the USB serial (`adb devices` shows a non-IP serial). Without USB, do not run them; write "needs USB" in the results instead of improvising.
+4. Before any cut: hold the tablet lease, note the cut in the log with the restore time, and confirm the other agent is not mid-test.
+5. If adb is lost anyway: do not keep retrying blindly; record it, and ask the operator to toggle Wi-Fi once. Losing adb is a failed step, not evidence.
+
+Per-app blocking on the device (`iptables`) needs root and is not available on this tablet; do not attempt it.
