@@ -73,9 +73,11 @@ object Favorites {
 
     fun noteDestination(name: String?, c: GeographicCoordinate) {
         val label = name?.takeIf { it.isNotBlank() } ?: "%.4f, %.4f".format(c.lat, c.lng)
-        _recent.value = (listOf(Recent(label, c.lat, c.lng, System.currentTimeMillis())) + _recent.value.filter { it.name != label }).take(8)
-        runCatching { recentFile.writeText(json.encodeToString(JsonArray.serializer(), buildJsonArray { _recent.value.forEach { add(recToJson(it)) } })) }
+        _recent.value = (listOf(Recent(label, c.lat, c.lng, System.currentTimeMillis())) + _recent.value.filter { it.name != label }).take(10)
+        persistRecent()
     }
+    fun forgetRecent(name: String) { _recent.value = _recent.value.filter { it.name != name }; persistRecent(); NavLog.log("favorites", "forgot recent \"$name\"") }
+    private fun persistRecent() { runCatching { recentFile.writeText(json.encodeToString(JsonArray.serializer(), buildJsonArray { _recent.value.forEach { add(recToJson(it)) } })) } }
 
     private fun persist() {
         runCatching { favFile.writeText(json.encodeToString(JsonArray.serializer(), buildJsonArray { _all.value.forEach { add(favToJson(it)) } })) }

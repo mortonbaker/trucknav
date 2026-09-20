@@ -3,6 +3,7 @@ package com.morton.trucknav
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
@@ -106,6 +107,9 @@ fun NotNavigatingOverlay(
     // Search sits in its own box so the results card can grow (the grid cell
     // below is a third of the map and was clipping every row after A).
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    var panelTab by remember { mutableStateOf<com.morton.trucknav.nav.DestTab?>(null) }
+    var focusTick by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val scene0 by viewModel.sceneState.collectAsState()
     Box(modifier.fillMaxSize().padding(top = 16.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
       Box(
           modifier = Modifier.fillMaxWidth(if (landscape) 0.58f else 1f).onGloballyPositioned { coordinates ->
@@ -116,7 +120,12 @@ fun NotNavigatingOverlay(
         Column {
           val scene by viewModel.sceneState.collectAsState()
           scene.arrived?.let { a -> com.morton.trucknav.nav.ArrivalCard(a, onDone = { viewModel.dismissArrival() }); return@Column }
-          PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
+          PhotonSearch(
+              userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }, focusTick = focusTick,
+              // Tesla's default: an empty, focused search shows where you have been.
+              onFocusChanged = { f -> if (f && panelTab == null) panelTab = com.morton.trucknav.nav.DestTab.Recents },
+          ) { hit ->
+            panelTab = null
             viewModel.selectDestination(
                 location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
                 label = hit.label,
@@ -124,12 +133,24 @@ fun NotNavigatingOverlay(
             )
           }
           if (scene.searchResults.isEmpty()) {
-            com.morton.trucknav.nav.QuickPlaces(userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp)) { q ->
-              com.morton.trucknav.nav.NavLog.log("quick", "go ${q.name}")
-              viewModel.startNavigation(q.coordinate, q.name)
-            }
+            com.morton.trucknav.nav.QuickPlaces(
+                userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp),
+                onOpen = { panelTab = it },
+                onSet = { kind -> panelTab = null; focusTick++; com.morton.trucknav.nav.NavLog.log("quick", "set $kind: focus search") },
+            ) { name, c -> com.morton.trucknav.nav.NavLog.log("quick", "go $name"); viewModel.startNavigation(c, name) }
           }
         }
+      }
+    }
+    // The destinations panel: right side in landscape (the map keeps its left 55 %), bottom half in portrait.
+    panelTab?.takeIf { scene0.searchResults.isEmpty() }?.let { tab ->
+      Box(modifier.fillMaxSize().padding(if (landscape) androidx.compose.foundation.layout.PaddingValues(top = 16.dp, end = 12.dp, bottom = 16.dp) else androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 12.dp, bottom = 12.dp)),
+          contentAlignment = if (landscape) Alignment.TopEnd else Alignment.BottomCenter) {
+        com.morton.trucknav.nav.DestinationsPanel(
+            tab = tab, userLocation = location?.coordinates,
+            modifier = if (landscape) Modifier.fillMaxWidth(0.42f).fillMaxHeight() else Modifier.fillMaxWidth().fillMaxHeight(0.55f),
+            onTab = { panelTab = it }, onClose = { panelTab = null },
+        ) { name, c -> panelTab = null; com.morton.trucknav.nav.NavLog.log("quick", "go $name (panel)"); viewModel.startNavigation(c, name) }
       }
     }
     InnerGridView(

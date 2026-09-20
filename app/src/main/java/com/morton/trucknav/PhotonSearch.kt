@@ -27,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
@@ -80,6 +81,8 @@ fun PhotonSearch(
     userLocation: GeographicCoordinate?,
     modifier: Modifier = Modifier,
     onResults: (List<PhotonHit>) -> Unit = {},   // the map draws badges for these
+    focusTick: Int = 0,                           // bump to focus the field from outside ("Set Home")
+    onFocusChanged: (Boolean) -> Unit = {},       // the overlay shows Recents while the empty field has focus
     onPick: (PhotonHit) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -88,6 +91,7 @@ fun PhotonSearch(
     val focus = LocalFocusManager.current
     val dismiss = { focus.clearFocus(); keyboard?.hide() }
     val fieldFocus = remember { FocusRequester() }
+    LaunchedEffect(focusTick) { if (focusTick > 0) { fieldFocus.requestFocus(); keyboard?.show() } }
 
     LaunchedEffect(query) {
         if (query.length < 3) { hits = emptyList(); onResults(emptyList()); return@LaunchedEffect }
@@ -121,7 +125,7 @@ fun PhotonSearch(
                     BasicTextField(
                         value = query,
                         onValueChange = { query = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus),
+                        modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus).onFocusChanged { onFocusChanged(it.isFocused) },
                         singleLine = true,
                         textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
                         cursorBrush = SolidColor(Color.White),
