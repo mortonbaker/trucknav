@@ -90,3 +90,8 @@ Vehicle puck (have), styles (have), camera padding (have), tile prefetch (S15), 
 6. Route preview with ETA and alternates; avoid tolls/highways (S17.3).
 7. Favorites API + MCP (S17.5b).
 8. Auto night mode, speed limits, add-a-stop, arrival flow (S17.4 tail).
+
+## 9. Multi-stop and trip-bar conventions (2026-09-20, for S19)
+- Google Maps: up to nine destinations; auto-reroutes to the next destination after a stop; ETA accuracy drops on multi-stop routes (no dwell time) — https://www.androidpolice.com/google-maps-add-multiple-stops/ , https://support.google.com/maps/thread/304978377/eta-with-multiple-stops
+- Tesla: "Add a Stop" inserts before the destination and shows the ETA at each stop; stops cannot be removed without cancelling the trip; a progress bar runs to the destination or next stop; the direction list shows stops, ETA, driving time and mileage at the bottom — https://www.notateslaapp.com/news/642/how-tesla-s-add-a-stop-feature-waypoints-works , https://www.tesla.com/ownersmanual/modelx/en_us/GUID-01F1A582-99D1-4933-B5FB-B2F0203FFE6F.html
+- Android Auto NavigationTemplate travel estimate = arrival time, remaining time, remaining distance (no name) — Car App Library docs.
