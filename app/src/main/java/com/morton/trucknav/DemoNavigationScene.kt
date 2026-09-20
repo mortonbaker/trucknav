@@ -137,7 +137,24 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
             else PaddingValues(top = (h - PORTRAIT_BOTTOM_CHROME * 2).coerceAtLeast(0.dp)),
     )
   }
+  var destinationPreviewTopPaddingPx by remember { mutableStateOf(0) }
   val navigationMapState = rememberNavigationMapState(navigationCameraOptions = cameraOptions)
+
+  // New search results: fit them all (plus the user) under the results card.
+  val resultsKey = sceneState.searchResults.map { it.coordinate }.toString()
+  LaunchedEffect(resultsKey) {
+    val hits = sceneState.searchResults
+    if (hits.isEmpty()) return@LaunchedEffect
+    val pts = hits.map { it.coordinate } + listOfNotNull(viewModel.navigationUiState.value.location?.coordinates)
+    val west = pts.minOf { it.lng }; val east = pts.maxOf { it.lng }; val south = pts.minOf { it.lat }; val north = pts.maxOf { it.lat }
+    navigationMapState.cameraMode = com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.FREE
+    val top = with(density) { destinationPreviewTopPaddingPx.toDp() } + 24.dp
+    navigationMapState.cameraState.animateTo(
+        boundingBox = org.maplibre.spatialk.geojson.BoundingBox(west = west, south = south, east = east, north = north),
+        padding = PaddingValues(start = 48.dp, top = top, end = 48.dp, bottom = 48.dp),
+        duration = kotlin.time.Duration.parse("600ms"),
+    )
+  }
 
   // Ferrostar's landscape overlay writes map insets computed from the *screen*
   // width (start = screenWidth/2 + 16 dp). With the side panel open our map is
@@ -158,7 +175,6 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       navigationMapState.recenter(isNavigating = true)
     }
   }
-  var destinationPreviewTopPaddingPx by remember { mutableStateOf(0) }
   DestinationSelectionCameraEffect(
       selectedDestination = sceneState.selectedDestination,
       destinationSheetHeightPx = sceneState.destinationSheetHeightPx,
@@ -207,6 +223,12 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   ) { ui ->
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
+    com.morton.trucknav.nav.SearchResultsOverlay(sceneState.searchResults) { hit ->
+      viewModel.setSearchResults(emptyList())
+      viewModel.selectDestination(
+          location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
+          label = hit.label, origin = DestinationSelectionOrigin.SearchResult)
+    }
   }
 
   if (sceneState.isDestinationSheetVisible) {

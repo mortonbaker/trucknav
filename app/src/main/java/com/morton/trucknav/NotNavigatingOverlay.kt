@@ -85,7 +85,7 @@ fun NotNavigatingOverlay(
                     onTopOverlayBottomChanged(coordinates.boundsInRoot().bottom.roundToInt())
                   }
           ) {
-            PhotonSearch(userLocation = location?.coordinates) { hit ->
+            PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
               viewModel.selectDestination(
                   location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
                   label = hit.label,
