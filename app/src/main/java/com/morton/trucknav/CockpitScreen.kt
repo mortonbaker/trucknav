@@ -83,7 +83,7 @@ fun CockpitScreen() {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var pane by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(Pane.Music) }  // survives rotation
 
-    val venus = remember { VenusClient(BuildConfig.venusHost, BuildConfig.venusPortalId, scope) }
+    val venus = remember { VenusClient(ctx.applicationContext, BuildConfig.venusHost, BuildConfig.venusPortalId, scope) }
     val relay = remember { RelayClient(ctx.applicationContext).also { it.start() } }
     val music = remember { MediaSource(ctx, "com.unicornsonlsd.finamp", "Music") }
     val watcher = remember { SessionWatcher(ctx) }

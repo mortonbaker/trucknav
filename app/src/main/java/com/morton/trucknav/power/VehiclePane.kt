@@ -2,6 +2,8 @@ package com.morton.trucknav.power
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,11 +43,14 @@ import androidx.compose.ui.unit.sp
 // from the board's own names so 4runner.yaml is the single source of truth.
 // Car rules: >= 76 dp targets, one tap, state you can read at arm's length,
 // greyed with the reason when the board is not on this network. Unassigned
-// pins ("Relay N (Pin xx)") stay hidden until they are named.
+// pins ("Relay N (Pin xx)") are shown dim so wiring can be tested from the
+// seat; name them in 4runner.yaml and they become first-class. Starlink is
+// the one relay that takes the network down with it: tap = on, hold = off.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VehiclePane(relay: RelayClient, modifier: Modifier = Modifier) {
     val r by relay.state.collectAsState()
-    val shown = r.switches.filter { !it.name.contains("(Pin") }
+    val shown = r.switches.sortedBy { it.name.contains("(Pin") }
     Card(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -60,7 +65,12 @@ fun VehiclePane(relay: RelayClient, modifier: Modifier = Modifier) {
                 Text("Join the same Wi-Fi as the relay board (Everylink when the dish is up, or its own AP \"4Runner Relay Remote\").", color = Color(0xFF9aa4b2), fontSize = 15.sp)
             }
             LazyVerticalGrid(columns = GridCells.Adaptive(180.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(shown, key = { it.id }) { sw -> Tile(sw, enabled = !r.busy) { relay.toggle(sw.id) } }
+                items(shown, key = { it.id }) { sw ->
+                    val critical = sw.id == RelayClient.STARLINK
+                    Tile(sw, enabled = !r.busy, critical = critical,
+                        onTap = { if (critical) { if (!sw.on) relay.set(sw.id, true) } else relay.toggle(sw.id) },
+                        onHold = { if (critical) relay.set(sw.id, false) })
+                }
             }
         }
     }
@@ -73,21 +83,28 @@ private fun iconFor(sw: RelaySwitch): ImageVector = when {
     else -> Icons.Filled.ToggleOn
 }
 
-private fun label(sw: RelaySwitch) = sw.name.replace(Regex("^Relay \\d+\\s*"), "").trim('(', ')', ' ').ifEmpty { sw.name }
+private fun unassigned(sw: RelaySwitch) = sw.name.contains("(Pin")
+private fun label(sw: RelaySwitch) = if (unassigned(sw)) sw.name.substringBefore(" (").trim() else sw.name.replace(Regex("^Relay \\d+\\s*"), "").trim('(', ')', ' ').ifEmpty { sw.name }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Tile(sw: RelaySwitch, enabled: Boolean, onTap: () -> Unit) {
+private fun Tile(sw: RelaySwitch, enabled: Boolean, critical: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
+    val dim = unassigned(sw)
+    val fg = if (dim) Color(0xFF9aa4b2) else Color.White
     Column(
         Modifier.height(112.dp).clip(RoundedCornerShape(18.dp))
-            .background(if (sw.on) Color(0xFF1f5f8b) else Color(0xFF1a2028))
-            .clickable(enabled = enabled, onClick = onTap).padding(14.dp)
+            .background(if (sw.on) Color(0xFF1f5f8b) else if (dim) Color(0xFF141920) else Color(0xFF1a2028))
+            .combinedClickable(enabled = enabled, onClick = onTap, onLongClick = onHold).padding(14.dp)
             .semantics { contentDescription = "${label(sw)} ${if (sw.on) "ON" else "OFF"}" },
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Icon(iconFor(sw), contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
+            Icon(iconFor(sw), contentDescription = null, tint = fg, modifier = Modifier.size(34.dp))
             Text(if (sw.on) "ON" else "OFF", color = if (sw.on) Color.White else Color(0xFF9aa4b2), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
-        Text(label(sw), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+        Column {
+            Text(label(sw), color = fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(if (critical && sw.on) "hold to switch off" else if (dim) sw.name.substringAfter("(").trimEnd(')') + " · unassigned" else "", color = Color(0xFF9aa4b2), fontSize = 12.sp, maxLines = 1)
+        }
     }
 }

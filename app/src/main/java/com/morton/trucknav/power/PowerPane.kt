@@ -2,6 +2,8 @@ package com.morton.trucknav.power
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +50,7 @@ private fun a(v: Double?) = v?.let { "%.1f A".format(it) } ?: "--"
 
 // The always-on strip: one row under the map with the numbers that matter
 // while driving. Never taller than a finger.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Modifier) {
     val s by client.state.collectAsState()
@@ -57,7 +60,7 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
         modifier.fillMaxWidth().height(56.dp).background(Color(0xFF10141a)).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Cell("SOC", s.soc?.let { "${it.roundToInt()}%" } ?: "--", if (s.lowSoc) Bad else Color.White, big = true)
+        Cell("SOC", s.socShown?.let { "${it.roundToInt()}%" } ?: "--", if (s.lowSoc) Bad else Color.White, big = true)
         Cell("Batt", "${v(s.voltage)}  ${a(s.current)}", if ((s.current ?: 0.0) > 0.2) Good else if ((s.current ?: 0.0) < -0.2) Warn else Color.White)
         Cell("Solar", w(s.pvPower), Color.White)
         Cell("Alt", w(s.alternatorPower), Color.White)
@@ -67,7 +70,9 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
         // Starlink: tap to flip the relay. Amber while a switch/scan is in flight.
         Column(
             Modifier.clip(RoundedCornerShape(10.dp)).background(if (r.on(RelayClient.STARLINK) == true) Color(0xFF1f5f8b) else Color(0xFF1a2028))
-                .clickable(enabled = !r.busy) { relay.toggle(RelayClient.STARLINK) }.padding(horizontal = 10.dp, vertical = 4.dp)
+                // Tap turns the dish on; switching it OFF cuts the truck's network, so that takes a hold.
+                .combinedClickable(enabled = !r.busy, onClick = { if (r.on(RelayClient.STARLINK) != true) relay.set(RelayClient.STARLINK, true) }, onLongClick = { relay.set(RelayClient.STARLINK, false) })
+                .padding(horizontal = 10.dp, vertical = 4.dp)
                 .semantics { contentDescription = "Starlink " + (if (r.on(RelayClient.STARLINK) == true) "ON" else if (r.on(RelayClient.STARLINK) == false) "OFF" else "unknown") },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -86,6 +91,7 @@ private fun Cell(label: String, value: String, color: Color, big: Boolean = fals
 }
 
 // The full pane: every number the Pi publishes, grouped. Big SOC up top.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PowerPane(client: VenusClient, relay: RelayClient, modifier: Modifier = Modifier) {
     val s by client.state.collectAsState()
@@ -95,19 +101,21 @@ fun PowerPane(client: VenusClient, relay: RelayClient, modifier: Modifier = Modi
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Column {
                     Text("State of charge", color = Muted, style = MaterialTheme.typography.labelLarge)
-                    Text(s.soc?.let { "${it.roundToInt()}%" } ?: "--%", fontSize = 64.sp, fontWeight = FontWeight.Bold, lineHeight = 68.sp, color = if (s.lowSoc) Bad else Color.Unspecified)
+                    Text(s.socShown?.let { "${it.roundToInt()}%" } ?: "--%", fontSize = 64.sp, fontWeight = FontWeight.Bold, lineHeight = 68.sp, color = if (s.lowSoc) Bad else Color.Unspecified)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(s.batteryStateText, style = MaterialTheme.typography.titleMedium)
                     s.timeToGoSec?.let { Text("${(it / 3600).toInt()}h ${((it % 3600) / 60).toInt()}m to go", color = Muted) }
-                    if (!s.connected) Text("Pi offline", color = Bad)
+                    Text(if (s.connected) "Pi · ${s.host} (${s.path})" else "Pi offline · ${s.path}", color = if (s.connected) Muted else Bad, fontSize = 13.sp)
+                    if (s.connected && s.socShown == null) Text("no battery monitor on the Pi (SmartShunt needs its VE.Direct cable)", color = Muted, fontSize = 12.sp)
                 }
             }
             Section("Switches")
             // Big, one-tap, readable at arm's length: the whole row toggles.
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF1a2028))
-                    .clickable(enabled = !r.busy) { relay.toggle(RelayClient.STARLINK) }.padding(horizontal = 16.dp, vertical = 12.dp)
+                    .combinedClickable(enabled = !r.busy, onClick = { if (r.on(RelayClient.STARLINK) != true) relay.set(RelayClient.STARLINK, true) }, onLongClick = { relay.set(RelayClient.STARLINK, false) })
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .semantics { contentDescription = "Starlink switch" },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -119,13 +127,14 @@ fun PowerPane(client: VenusClient, relay: RelayClient, modifier: Modifier = Modi
                             when {
                                 r.busy -> "working..."
                                 r.on(RelayClient.STARLINK) == null -> r.error ?: "not reachable"
-                                else -> "relay ${if (r.on(RelayClient.STARLINK) == true) "on" else "off"} · ${r.host}"
+                                r.on(RelayClient.STARLINK) == true -> "on · hold to switch off · ${r.host}"
+                                else -> "off · tap to switch on · ${r.host}"
                             },
                             color = if (r.on(RelayClient.STARLINK) == null && !r.busy) Bad else Muted, fontSize = 13.sp,
                         )
                     }
                 }
-                Switch(checked = r.on(RelayClient.STARLINK) == true, onCheckedChange = { relay.set(RelayClient.STARLINK, it) }, enabled = !r.busy,
+                Switch(checked = r.on(RelayClient.STARLINK) == true, onCheckedChange = null, enabled = !r.busy,
                     colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF1f8bd1)))
             }
             Section("Battery")
