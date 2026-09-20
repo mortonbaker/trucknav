@@ -1,0 +1,23 @@
+# build output
+build/
+app/build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+# secrets (never commit)
+local.properties
+*.jks
+*.keystore
+*keystore.properties
+# tooling
+.idea/
+*.iml
+.DS_Store
+# evidence lives in ~/evidence, not the tree
+*.png
+# agent claims are runtime state
+.claims/
+
+# app drawables are source, not evidence
+!app/src/main/res/**/*.png

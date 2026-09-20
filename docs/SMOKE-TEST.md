@@ -1,0 +1,213 @@
+# TruckNav — surfaces, smoke tests, and pass/fail criteria
+
+Version this applies to: 0.6.0 (2026-09-19). Device: Galaxy Tab A7 Lite `100.95.16.47`, landscape in the 4Runner mount.
+
+Every test below is run the same way: from atlas01, `adb -s 100.95.16.47:5555` drives the screen with `~/bin/ui.sh` (uiautomator taps by label) and `exec-out screencap`, then the screenshot is read. A test **passes only if the stated observation is true in the screenshot or the log**; nothing is inferred. Before each pass: `adb logcat -c` and `adb logcat -c -b crash`. After each pass: `adb logcat -d -b crash | grep -c "Process: com.morton.trucknav"` must be `0` — any nonzero is an automatic fail for the whole pass, whatever else looked right.
+
+## 1. Surfaces (everything the app shows)
+
+| # | Surface | What it is | Data source |
+|---|---|---|---|
+| S1 | Rail | Left column: Map, Music, Books, YouTube, Power, Apps; mini now-playing at the bottom (art, play/pause, next) | `SessionWatcher` (any media session on the device) |
+| S2 | Map pane | Ferrostar/MapLibre map, search field, recenter button; navigation UI (turn card, route line, ETA bar, end button, mute) once a route is active | Offline PMTiles via loopback server; Valhalla on homebackup; Photon search |
+| S3 | Power strip | One row under the map, always visible: SOC, battery V/A, Solar W, Alternator W, Load W, Net in/out W, Link (charger state / offline / stale) | Venus MQTT |
+| S4 | Music pane | Big art, title, artist, progress, prev / play-pause / next, Library button | now-playing from `SessionWatcher`; library from Finamp's MediaBrowserService |
+| S5 | Books pane | Same as S4 with back-30s / forward-30s instead of prev/next | Audiobookshelf's MediaBrowserService |
+| S6 | Library browser | List with back arrow and title; folders drill in, tracks play and return to the art view | MediaBrowserService of the pane's source |
+| S7 | Power pane | Full detail: SOC big, battery state, time-to-go, Battery / Sources / Loads groups | Venus MQTT |
+| S8 | Apps pane | Grid of external apps (Music, Audiobooks, YouTube, OsmAnd, Venus, Settings); dimmed when not installed | PackageManager |
+| S9 | YouTube | Rail item launches NewPipe full-screen; its audio shows in S1/S4 when you come back | NewPipe media session |
+| S10 | Overlay dock | Vertical pill (home + app shortcuts) over foreign full-screen apps only; draggable; remembered position | `OverlayService` |
+| S11 | Overlay now-playing bar | Art/title/controls over foreign apps while something plays, hidden over the player itself and over TruckNav | `OverlayService` + `SessionWatcher` |
+| S12 | Boot | Tablet boots straight into TruckNav (HOME app); overlay service starts on boot | `BootReceiver`, default-home setting |
+
+## 2. Smoke tests
+
+Each row: **Steps** → **Pass criterion** (falsifiable) → **Fail looks like**.
+
+### S12 Boot / home
+1. `adb reboot`; wait 90 s; screenshot.
+   - Pass: focused window is `com.morton.trucknav/.MainActivity`, rail visible, map tiles drawn (street names legible), power strip present.
+   - Fail: Samsung launcher, "Select a Home app" dialog, grey map, missing strip.
+2. Press HOME from any foreign app (`adb shell input keyevent KEYCODE_HOME`).
+   - Pass: TruckNav in front within 2 s.
+
+### S2 Map + navigation
+3. Cold start with Wi-Fi and Tailscale up. Screenshot after 15 s.
+   - Pass: map centred on GPS (or fallback homeLat/homeLng from local.properties if no fix), street labels rendered, blue dot visible. Log: `LocalAssetServer` shows ≥ 10 `pmtiles range=` requests.
+   - Fail: beige/grey map without roads; zero tile range requests.
+4. Type `Denton` in "Where to?", tap `Denton, Texas`.
+   - Pass: within 10 s a route line is drawn, turn card shows a street name and distance, ETA bar shows time/duration/miles. No crash entry.
+   - Fail: spinner forever (routing unreachable) → check `https://homebackup.tail00ae77.ts.net:8446/status` from the tablet; crash → `adb logcat -d -b crash`.
+5. Tap End Navigation.
+   - Pass: turn card and route gone, search field back, map still rendered.
+6. Airplane-mode test: enable airplane mode, start step 4 again.
+   - Pass (current design): search and routing fail *gracefully* (no crash), map still renders offline, an active route from before keeps guiding.
+   - This is the known limitation until on-device routing lands.
+7. Voice: start a route, wait for the first spoken instruction.
+   - Pass: audible TTS within the first manoeuvre; Mute button toggles it.
+
+### S3 Power strip
+8. With the Pi reachable (`ping 100.112.123.30`): screenshot.
+   - Pass: `Batt` shows a voltage between 10.0 and 15.0 V (matches the Pi's GUI within 0.1 V); `Link` is a charger state word (Off/Bulk/Absorption/Float) not "offline".
+9. Unplug/disable the Pi's network for 3 min.
+   - Pass: `Link` reads `stale` then `offline`; values stay as last seen or `--`; no crash. Reconnect → returns to live within 60 s.
+10. Numbers vs truth: compare SOC/V/A with the Venus remote console at the same moment.
+   - Pass: identical to the displayed precision. `--` only where the Pi itself has no value (currently SOC, time-to-go, alternator, loads — no shunt/inverter wired).
+
+### S4 / S5 Now playing
+11. From the Music pane, tap Library → Albums → any album → any track.
+   - Pass: browser closes, art fills the pane, title/artist match Finamp's own now-playing, progress bar advances, rail mini strip shows the same art.
+12. Tap play/pause twice, next once.
+   - Pass: Finamp's playback state flips each time (verify with `adb shell dumpsys media_session | grep -A1 finamp | grep state=`); track title changes on next.
+13. Start an audiobook in Audiobookshelf's own UI, return to the cockpit, open Books.
+   - Pass: the book's cover/title shows; the two buttons are ±30 s and they move the progress bar by ~30 s.
+14. Two sources: music playing, then start a book.
+   - Pass: within 2 s the rail strip and both panes follow the *book* (the playing one). Pause the book, play music → follows music.
+
+### S6 Library browser
+15. Music → Library: root shows Albums / Artists / Playlists / Genres / Tracks; drill Albums → shows Noah Kahan albums with subtitles; back arrow returns one level; back at root returns to the art view.
+16. Books → Library: root shows Audiobookshelf's tree (Continue / Library / …); drill one level; a playable item starts playback and returns to art view.
+   - Fail: "Connecting to Books…" forever → ABS not running / service not exported; check `adb shell dumpsys package com.audiobookshelf.app | grep MediaBrowserService`.
+
+### S7 Power pane
+17. Rail → Power.
+   - Pass: SOC big number (or `--`), state text (Idle/Charging/Discharging), Battery/Sources/Loads sections all present, values consistent with S3.
+
+### S8 Apps
+18. Rail → Apps: six tiles; OsmAnd tile opens OsmAnd full-screen; the overlay dock (S10) appears within 3 s; tapping its house icon returns to TruckNav.
+   - Pass: both transitions happen; the dock is *not* visible while TruckNav is in front.
+
+### S9 YouTube
+19. Rail → YouTube: NewPipe opens. Play any video, switch to background playback (NewPipe: tap the headphone icon), press HOME.
+   - Pass: rail mini strip shows the video's title/thumbnail; play/pause works from the rail; Music pane shows it as now playing.
+
+### S10 / S11 Overlays
+20. In OsmAnd with music playing: dock pill and now-playing bar both visible; drag each; open Finamp → bar hides (player is in front), dock stays; return to TruckNav → both hidden.
+   - Pass: exactly that visibility matrix. Positions survive `adb reboot`.
+
+### Stability
+21. 30-minute soak: route active, music playing, Pi connected. Every 5 min: screenshot + crash count.
+   - Pass: 0 crash entries, strip still `live`, progress bar still moving, map still following.
+
+## 3. Known gaps (so a failure is classified correctly)
+
+- Routing and search need connectivity (tailnet → homebackup). Not a bug until on-device Valhalla ships.
+- SOC / time-to-go / alternator / load are `--` because nothing on the Victron bus reports them yet. Not a bug.
+- (fixed 0.10.0) system bars are hidden; the power strip owns the bottom edge.
+- App icon is the default Android robot.
+- Theme: the right pane uses Material defaults, not the rail's palette.
+
+## 4. YouTube: history without live
+
+NewPipe has no Google sign-in, so it cannot show *your* YouTube history. Two routes:
+- **GrayJay (FUTO)** — FOSS, signs in to your YouTube account through its plugin, syncs your subscriptions and history, no ads, and Live can simply be ignored. Would replace NewPipe on the YouTube rail item. Recommended if "my history" is the requirement.
+- **NewPipe + Google Takeout** — import subscriptions once, history stays local to the tablet. No account on the device. Fine if "my subscriptions" is enough.
+
+## 5. Results log
+
+### 2026-09-20 — v0.9.5 (S0)
+
+| Surface | Test | Result |
+|---|---|---|
+| S1 boot / home | app is default HOME, survives `am force-stop` + HOME | PASS |
+| S2 map | basemap renders at home, search box present, locate button | PASS (viewport centering + styles deferred to S2/S3) |
+| S3 power strip | Batt 14.16 V / −0.3 A, Solar 0 W, Net out 4 W, Link Off when the Pi is unplugged | PASS (SOC/Alt/Load `--` by design) |
+| S4 Music pane | Finamp track, big art, prev/play/next, Library, progress | PASS, landscape + portrait |
+| S5 Books pane | own player, ±30, speed ladder, Library, play-last from cold | PASS, landscape + portrait (books-smoke D1–D11) |
+| S6 library browser | ABS Continue/Library grid, tap → plays | PASS |
+| S7 power pane | full detail page | PASS |
+| S8 apps | cockpit panes + Settings only | PASS |
+| S9 YouTube | history feed loads; Live/Shorts still visible (CSS selectors pending sign-in) | PARTIAL → S4 |
+| S10/S11 overlays | dock pill + now-playing over OsmAnd; hidden over self; Settings hides overlays (Android) | PASS |
+| Stability | 0 crash entries across all S0 runs; 30-min soak not yet run | PASS / soak pending (S9) |
+
+Scripts: `docs/books-smoke.sh`, `docs/d9.sh`. Screenshots: `~/s0-*.png` on atlas01.
+
+### 2026-09-20 — v0.10.0 (S1 immersive + status strip)
+
+| Check | Result | Evidence |
+|---|---|---|
+| No system status bar / nav buttons | PASS | `s1-land.png`, `s1-port.png`: first row is our strip, last row is the rail/power strip |
+| Strip fields populated | PASS | 8:36 / `Everything` (dumpsys wifi SSID "Everything") / `tailnet` (connectivity shows tun0) / `GPS` (fix < 10 s) / `100%` charging (dumpsys battery level 100, AC powered) |
+| Swipe reveals bars transiently | PASS | `input swipe 400 795 400 600`: +0.7 s shows Android status + nav bars over the app, +4 s screenshot identical to before the swipe |
+| Rail has no transport icons | PASS | uiautomator: Play/Pause `[1019,685]`, Previous `[916,691]`, Next `[1135,691]` — all in the pane (x ≥ 916); rail is x < 116 and holds only the six destinations + thumbnail |
+| Power strip fully visible in landscape | PASS | strip bottom edge at y=800 with all seven labels and values readable |
+
+Implementation: `MainActivity.hideSystemBars()` (`WindowInsetsControllerCompat`, `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`, re-applied in `onResume` and `onWindowFocusChanged`); `StatusStrip.kt` (28 dp; Wi-Fi via `NetworkCallback(FLAG_INCLUDE_LOCATION_INFO)`, tailnet via a `TRANSPORT_VPN` callback, GPS age via a 5 s `LocationManager` listener, battery via the sticky `ACTION_BATTERY_CHANGED`); `navigationBarsPadding` removed from the cockpit. Added `ACCESS_NETWORK_STATE` / `ACCESS_WIFI_STATE`.
+
+### 2026-09-20 — v0.10.5 (S2 map centering + camera padding)
+
+Harness: `docs/s2-camera.sh <tag>` (drives search → Denton → Start navigation, rotates, toggles the panel) + `docs/puck.py <png> <map bounds>` (finds the puck as the compact blue component ringed by white; the route line shares the puck's blue). Map bounds come from the MapLibre view's uiautomator node.
+
+| State | Puck position in map area | Result |
+|---|---|---|
+| Browsing, landscape, panel open (734×688) | x 49.9 % / y 49.9 % | PASS |
+| Browsing, landscape, panel closed (1223×688) | x 50.0 % / y 49.9 % | PASS |
+| Browsing, portrait, panel closed (800×1111) | x 50.0 % / y 50.0 % | PASS |
+| Browsing, portrait, panel open (800×555) | x 49.9 % / y 49.9 % | PASS |
+| Navigating, landscape, panel open | x 74.9 % / y 74.7 % (was 95.6 % on 0.10.1 — under the panel edge) | PASS |
+| Navigating, landscape, panel closed | x 75.0 % / y 74.8 % | PASS |
+| Navigating, portrait, panel closed | x 50.0 % / y 78.9 % | PASS (lower third) |
+| Navigating, portrait, panel open (555 px map) | x 50.0 % / y 57.8 %, fully visible above the road pill + arrival bar | PASS (bottom 175 dp is Ferrostar chrome; lower third of the *visible* map) |
+| Search → pick result | keyboard `mInputShown=false`, sheet + Start button visible | PASS (was: keyboard covered the sheet) |
+| Rotation mid-route | camera back in `FOLLOW_USER_WITH_BEARING` (log line), pane selection kept | PASS |
+| Crashes | 0 | PASS |
+
+Root causes fixed:
+- Ferrostar's `navigationCameraOptions()` derives padding from `LocalConfiguration` *screen* size (landscape: start = 50 % of screen width). With the map at 60 % of the screen that shoved the puck to the panel edge. `DemoNavigationScene` now measures the map with `onSizeChanged` and builds `NavigationCameraOptions` from the map's own size (landscape: start = w/2, top = h/2; portrait: top = h − 2·175 dp so the target clears the pill and arrival bar).
+- Rotation recreates the activity and Ferrostar's map state comes back in `FOLLOW_USER`; a `LaunchedEffect(landscape)` recenters with `isNavigating = true` when a route is active.
+- `pane` is `rememberSaveable` (rotation used to reset to Music).
+- `PhotonSearch` clears focus + hides the IME on result pick / IME Search.
+
+### 2026-09-20 — v0.11.1 (vehicle puck)
+
+- `VehiclePuck.kt`: the 4Runner top-down PNG (`res/drawable-nodpi/vehicle_top.png`, 320 px, transparent) as a SymbolLayer, 84 dp, pitch + rotation aligned to the map, rotated by course-over-ground; position/heading tween over 1 s; route-snapped location while navigating. Ferrostar default puck is off (`showDefaultPuck = false`).
+- Verified: browsing (top-down, on the home street) and navigating (tilted, on the route line, nose along the route) screenshots `~/puck-browse.png`, `~/puck-nav.png`; 0 crashes.
+- Tablet GPS: SM-T220 has `android.hardware.location.gps`; `dumpsys location` shows a live gps fix indoors (13 satellites, hAcc 2.9 m). No external receiver or phone-shared location needed.
+- Note: `docs/puck.py` (blue-dot finder) no longer matches the vehicle icon; it documents the S2 measurements on 0.10.x.
+
+### 2026-09-20 — v0.12.2 (S3 map styles + search surface)
+
+**Styles.** `docs/mkstyles.py` derives `style-satellite/hybrid/terrain.json` from the Protomaps light style (Esri World Imagery raster; hybrid = imagery + the offline roads/boundaries/labels recoloured white-on-black; terrain = light + AWS Terrarium `raster-dem` → `hillshade` inserted above every landuse fill, under water/roads — under the fills it was invisible inside the Wichita Mountains park polygon). Files live on the tablet next to the basemap and are served by `LocalAssetServer`; `MapStyle.kt` holds the enum, the persisted choice (`prefs map/style`) and the bottom sheet; Layers button at centre-start of the map in every state.
+
+Harness: `docs/s3-styles.sh <tag>` + `docs/mapstat.py` (map-region colour statistics prove which style is on screen: light mean ≈ (217,218,212), dark ≈ (34,35,36), satellite/hybrid ≈ (113,114,89) with stddev > 55). Release builds refuse `run-as`, so persistence is proven by pixels, not by reading the prefs file.
+
+| Check | Result |
+|---|---|
+| Sheet shows five tiles (uiautomator content-desc Light/Dark/Satellite/Hybrid/Terrain) | PASS (5) |
+| Each selection changes the map within 3 s | PASS — screenshot at +3 s already classified as the new style for all five |
+| Satellite = imagery; Hybrid = imagery + white roads + labels; Dark/Light vector | PASS (`s3-a-*.png`) |
+| Terrain shows relief on a hilly spot | PASS after the layer-order fix — Mount Scott preview (`s3-terrain-scott.png`) shows shaded ridges; 69 terrarium tile requests in logcat |
+| Choice survives force-stop | PASS — restart screenshot stats identical to hybrid (112,114,90 / 67,62,62) |
+| Self-restoring Wi-Fi cut (45 s) on satellite | PASS — cached imagery still rendered, no dialog, 0 crashes; switching to Light during the outage renders the offline vector map |
+| Route started on Light, switch to Hybrid mid-route | PASS — route line, turn card and End Navigation all present (`s3-a-route-hybrid.png`) |
+| System bars stay hidden while the sheet is open | PASS (0.12.1: the sheet's own window gets the same insets controller) |
+| Crashes across all runs | 0 |
+
+**Search surface (operator report: "text is gray, can't read it over the map, can't see the box on satellite").** Verified on 0.12.0: the field was an outlined, transparent Material text field — placeholder and input rendered light grey over the pale basemap and the outline vanished over imagery.
+
+Design rules applied (sources: [M3 search guidelines](https://m3.material.io/components/search/guidelines) — container/text ≥ 3:1, use a distinct surface container; [Design for Driving visual principles](https://developers.google.com/cars/design/design-foundations/visual-principles) — text/icons ≥ 4.5:1, primary text ≥ 24 dp, touch targets ≥ 76 dp with 23 dp gaps, negative polarity (light on dark) at night; [AAOS typography](https://developers.google.com/cars/design/automotive-os/design-system/typography) — nothing below 24 dp is glanceable; [AOSP driver-distraction guidelines](https://source.android.com/docs/automotive/driver_distraction/guidelines)): an **opaque, elevated dark pill** (#10141a, 8 dp shadow) so it reads identically over vector, dark and imagery basemaps; leading search glyph; **24 sp white input text**, placeholder #aab4c0 (7.7:1); trailing Clear (×) when there is text; result rows 72 dp, 22 sp white, opaque card. The whole pill is the tap target and focuses the field. Width: full map width minus margins (Google/Apple Maps convention) since it only exists while not navigating.
+
+Done-criteria and measurements (`docs/search-smoke.sh` + `docs/contrast.py`, run on Light, Satellite and Dark):
+
+| Criterion | Measured |
+|---|---|
+| Container colour identical on every basemap (proves opacity) | (16,20,26) on Light, Satellite, Dark — 91 % of field pixels |
+| Input text contrast ≥ 4.5:1 | 18.5:1 (white on #10141a) on all three |
+| Typed text actually visible | 2 191–2 648 bright text pixels inside the field on each basemap (was 0 on 0.12.0 Light) |
+| Field height ≥ 64 dp | 85 px = 64.8 dp; width 676 px |
+| Result row ≥ 72 dp | row card 90 px ≈ 69 dp visual (padding + 72 dp min-height clickable) |
+| Clear (×) empties field, drops keyboard, clears results | keyboard `mInputShown=false`, results 0, on all three |
+| Pick a result → keyboard down, field cleared, destination sheet with Start | PASS |
+| Crashes | 0 |
+
+Harness note: `ui.sh tap` substring-matched the wrong node more than once ("Map" hit the map view, "Mount Scott" hit the text field). `ui.sh tapx` (exact text/content-desc) added and used in the S3 scripts.
+
+### 2026-09-20 — v0.14.0 (S11 nav log, S12 reroute guard, Vehicle pane)
+
+- `nav/NavLog.kt`: rolling `files/navlog/nav-YYYYMMDD.log` + logcat tag `NavLog` — start/stop with caller, route summaries, every visual/spoken instruction with maneuver type/modifier and position, progress every 10 s, deviations, reroute decisions, mute. Verified: init line written on launch. Pull with `adb pull /sdcard/Android/data/com.morton.trucknav/files/navlog`.
+- S12 guard: `AlternativeRouteProcessor` ignores reroute answers unless the core's trip state is `Navigating`; `startNavigation` drops a fetched route if navigation was stopped/restarted while fetching (generation counter). Needs a real drive to prove (criterion: zero `fetching route`/`replace` after `stop`).
+- Vehicle pane (rail item): tiles built from the board's switch list; unreachable state renders "relay board not on this network" with the join hint (verified on the phone hotspot with the board in AP mode). Power strip Starlink cell now reads through the same client.
+- Observed: on the phone hotspot the tablet cannot reach the Venus Pi either over the tailnet (100.112.123.30, 100 % loss) or the hotspot LAN (10.61.176.141) — hotspot client isolation suspected; power strip shows `Link offline`. Tracked under S16.
+- R8/arm64 build: 26 MB, 75 s push over the hotspot.

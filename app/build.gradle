@@ -1,0 +1,87 @@
+plugins {
+    alias libs.plugins.androidApplication
+    alias libs.plugins.compose.compiler
+}
+
+android {
+    namespace "com.morton.trucknav"
+    compileSdk = 36
+    defaultConfig {
+        ndk { abiFilters "arm64-v8a" }   // Tab A7 Lite; drop the x86/mips/v7a dead weight
+        applicationId "com.morton.trucknav"
+        minSdk 29
+        targetSdk 36
+        versionCode 34
+        versionName "0.15.0"
+        vectorDrawables { useSupportLibrary true }
+        Properties properties = new Properties()
+        def lp = project.rootProject.file("local.properties")
+        if (lp.exists()) properties.load(lp.newDataInputStream())
+        buildConfigField "String", "valhallaUrl", "\"${properties.getProperty("valhallaUrl", "https://valhalla1.openstreetmap.de/route")}\""
+        buildConfigField "String", "styleUrl", "\"${properties.getProperty("styleUrl", "https://demotiles.maplibre.org/style.json")}\""
+        buildConfigField "String", "venusHost", "\"${properties.getProperty("venusHost", "")}\""
+        // fallback map position before the first GPS fix; set homeLat/homeLng in local.properties
+        buildConfigField "double", "homeLat", "${properties.getProperty("homeLat", "33.2148")}"
+        buildConfigField "double", "homeLng", "${properties.getProperty("homeLng", "-97.1331")}"
+        buildConfigField "String", "venusPortalId", "\"${properties.getProperty("venusPortalId", "2ccf67855c49")}\""
+        buildConfigField "String", "absUrl", "\"${properties.getProperty("absUrl", "")}\""
+        buildConfigField "String", "absUser", "\"${properties.getProperty("absUser", "")}\""
+        buildConfigField "String", "absPass", "\"${properties.getProperty("absPass", "")}\""
+        buildConfigField "String", "photonUrl", "\"${properties.getProperty("photonUrl", "https://photon.komoot.io/api/")}\""
+    }
+    signingConfigs {
+        release {
+            def p = new File(System.getProperty("user.home"), ".calibre-shell-keystore.properties")
+            if (p.exists()) {
+                Properties props = new Properties(); p.withInputStream { props.load(it) }
+                storeFile file(props.getProperty("storeFile"))
+                storePassword props.getProperty("storePassword")
+                keyAlias props.getProperty("keyAlias")
+                keyPassword props.getProperty("keyPassword")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            // R8 + arm64-only: 130 MB -> ~35 MB, which matters when the push
+            // rides a phone hotspot over the tailnet.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures { compose true; buildConfig true }
+    packagingOptions { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+}
+
+dependencies {
+    coreLibraryDesugaring libs.desugar.jdk.libs
+    implementation libs.androidx.ktx
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.activity.compose
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling
+    implementation libs.androidx.compose.material3
+    implementation libs.ferrostar.core
+    implementation libs.ferrostar.ui.compose
+    implementation libs.ferrostar.ui.maplibre
+    implementation libs.maplibre.compose
+    implementation platform(libs.okhttp.bom)
+    implementation libs.okhttp.core
+    implementation libs.kotlinx.serialization
+    implementation "androidx.media:media:1.7.0"
+    implementation "io.coil-kt:coil-compose:2.7.0"
+    implementation "androidx.media3:media3-exoplayer:1.11.1"
+    implementation "androidx.media3:media3-session:1.11.1"
+    implementation "androidx.media3:media3-datasource:1.11.1"
+    implementation "org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5"
+    implementation "androidx.compose.material:material-icons-extended"
+}

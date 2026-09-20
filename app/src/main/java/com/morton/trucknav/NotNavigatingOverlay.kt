@@ -1,0 +1,89 @@
+package com.morton.trucknav
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import com.stadiamaps.ferrostar.composeui.views.components.controls.NavigationUIButton
+import com.stadiamaps.ferrostar.composeui.views.components.gridviews.InnerGridView
+import com.stadiamaps.ferrostar.maplibreui.runtime.NavigationMapState
+import kotlin.math.roundToInt
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotNavigatingOverlay(
+    modifier: Modifier = Modifier,
+    viewModel: DemoNavigationViewModel,
+    navigationMapState: NavigationMapState,
+    onTopOverlayBottomChanged: (Int) -> Unit = {},
+) {
+  val location by viewModel.location.collectAsState()
+  val isSimulating by viewModel.simulated.collectAsState()
+  val uiState by viewModel.navigationUiState.collectAsState()
+  var showStyles by remember { mutableStateOf(false) }
+
+  // Style switcher lives on the map in every state (centre-left is free in
+  // both of Ferrostar's navigating layouts and in ours).
+  InnerGridView(
+      modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
+      centerStart = {
+        NavigationUIButton(onClick = { showStyles = true }, buttonSize = DpSize(56.dp, 56.dp)) {
+          Icon(LayersIcon, contentDescription = "Map style")
+        }
+      },
+  )
+  if (showStyles) MapStyleSheet(onDismiss = { showStyles = false })
+
+  if (!uiState.isNavigating()) {
+    InnerGridView(
+        modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
+        topCenter = {
+          Box(
+              modifier =
+                  Modifier.onGloballyPositioned { coordinates ->
+                    onTopOverlayBottomChanged(coordinates.boundsInRoot().bottom.roundToInt())
+                  }
+          ) {
+            PhotonSearch(userLocation = location?.coordinates) { hit ->
+              viewModel.selectDestination(
+                  location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
+                  label = hit.label,
+                  origin = DestinationSelectionOrigin.SearchResult,
+              )
+            }
+          }
+        },
+        centerEnd = {
+          NavigationUIButton(
+              onClick = { navigationMapState.recenter(isNavigating = false) },
+              buttonSize = DpSize(48.dp, 48.dp),
+          ) {
+            Icon(
+                painter = painterResource(R.drawable.my_location_24px),
+                contentDescription = stringResource(R.string.center_on_my_location),
+            )
+          }
+        },
+    )
+  }
+}

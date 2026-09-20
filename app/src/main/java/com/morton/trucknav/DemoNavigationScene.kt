@@ -1,0 +1,238 @@
+package com.morton.trucknav
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
+import android.content.res.Configuration
+import com.stadiamaps.ferrostar.maplibreui.runtime.NavigationActivity
+import com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraOptions
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
+import com.stadiamaps.ferrostar.composeui.config.VisualNavigationViewConfig
+import com.stadiamaps.ferrostar.composeui.config.withCustomOverlayView
+import com.stadiamaps.ferrostar.composeui.config.withSpeedLimitStyle
+import com.stadiamaps.ferrostar.composeui.runtime.KeepScreenOnDisposableEffect
+import com.stadiamaps.ferrostar.composeui.views.components.speedlimit.SignageStyle
+import com.stadiamaps.ferrostar.maplibreui.NavigationMapClickResult
+import com.stadiamaps.ferrostar.maplibreui.runtime.rememberNavigationMapState
+import com.stadiamaps.ferrostar.maplibreui.views.DynamicallyOrientingNavigationView
+import com.morton.trucknav.ui.DestinationSelectionBottomSheet
+import com.morton.trucknav.ui.DestinationSelectionCameraEffect
+import kotlinx.serialization.json.buildJsonObject
+import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.map.MapOptions
+import org.maplibre.compose.map.OrnamentOptions
+import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.rememberGeoJsonSource
+import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.MaplibreComposable
+import org.maplibre.spatialk.geojson.Feature
+import org.maplibre.spatialk.geojson.FeatureCollection
+import org.maplibre.spatialk.geojson.Point
+import uniffi.ferrostar.GeographicCoordinate
+
+private val PORTRAIT_BOTTOM_CHROME = 175.dp
+
+@Composable
+fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel) {
+  // Keeps the screen on at consistent brightness while this Composable is in the view hierarchy.
+  KeepScreenOnDisposableEffect()
+
+  val context = LocalContext.current
+
+  // Get location permissions.
+  // NOTE: This is NOT a robust suggestion for how to get permissions in a production app.
+  // This is simply minimal sample code in as few lines as possible.
+  val allPermissions =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.FOREGROUND_SERVICE_LOCATION,
+        )
+      } else {
+        arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
+      }
+
+  val permissionsLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+          permissions ->
+        when {
+          permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+            viewModel.setLocationPermissions(true)
+          }
+          permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
+            // TODO: Probably alert the user that this is unusable for navigation
+          }
+          // TODO: Foreground service permissions; we should block access until approved on API 34+
+          else -> {
+            // TODO
+          }
+        }
+      }
+
+  LaunchedEffect(Unit) {
+    if (
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+    ) {
+      viewModel.setLocationPermissions(true)
+    } else {
+      permissionsLauncher.launch(allPermissions)
+    }
+  }
+  val sceneState by viewModel.sceneState.collectAsState()
+  val mapStyle by MapStyles.current.collectAsState()
+
+  // Ferrostar's default navigation padding is derived from the *screen* size,
+  // which puts the puck at the right edge (or under the side panel) when the
+  // map is only part of the screen. Derive it from the map's own measured size
+  // instead, so the puck sits in the lower-right quadrant of the visible map
+  // whatever the rail / panel / orientation state is.
+  var mapSize by remember { mutableStateOf(IntSize.Zero) }
+  val density = LocalDensity.current
+  val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+  val cameraOptions = remember(mapSize, landscape) {
+    val w = with(density) { mapSize.width.toDp() }
+    val h = with(density) { mapSize.height.toDp() }
+    val a = NavigationActivity.Automotive
+    NavigationCameraOptions(
+        browsingZoom = a.zoom,
+        navigationZoom = a.zoom,
+        navigationTilt = a.tilt,
+        browsingPadding = PaddingValues(0.dp),
+        // Landscape: instruction card top-left, so the puck goes to the lower-right
+        // quadrant. Portrait: Ferrostar stacks the road-name pill and the arrival bar
+        // across the bottom ~175 dp of the map, so the target sits just above them
+        // (MapLibre centres the target in the padded viewport: top = 2*targetY - h).
+        navigationPadding =
+            if (landscape) PaddingValues(start = w * 0.5f, top = h * 0.5f)
+            else PaddingValues(top = (h - PORTRAIT_BOTTOM_CHROME * 2).coerceAtLeast(0.dp)),
+    )
+  }
+  val navigationMapState = rememberNavigationMapState(navigationCameraOptions = cameraOptions)
+
+  // Rotation recreates the activity and the camera comes back in browsing mode
+  // (top-down, centred) even though navigation is still running. Put it back in
+  // the navigating camera whenever the orientation changes mid-route.
+  val uiState by viewModel.navigationUiState.collectAsState()
+  LaunchedEffect(landscape) {
+    if (uiState.isNavigating()) {
+      Log.i("DemoNavigationScene", "orientation changed while navigating: cameraMode=${navigationMapState.cameraMode}, recentering")
+      navigationMapState.recenter(isNavigating = true)
+    }
+  }
+  var destinationPreviewTopPaddingPx by remember { mutableStateOf(0) }
+  DestinationSelectionCameraEffect(
+      selectedDestination = sceneState.selectedDestination,
+      destinationSheetHeightPx = sceneState.destinationSheetHeightPx,
+      topOverlayBottomPx = destinationPreviewTopPaddingPx,
+      navigationMapState = navigationMapState,
+  )
+
+  DynamicallyOrientingNavigationView(
+      modifier = Modifier.fillMaxSize().onSizeChanged { mapSize = it },
+      baseStyle = BaseStyle.Uri(MapStyles.url(mapStyle)),
+      navigationMapState = navigationMapState,
+      navigationCameraOptions = cameraOptions,
+      showDefaultPuck = false,   // the 4Runner is the puck; see VehiclePuck.kt
+      viewModel = viewModel,
+      config = VisualNavigationViewConfig.Default().withSpeedLimitStyle(SignageStyle.MUTCD),
+      views =
+          NavigationViewComponentBuilder.Default()
+              .withCustomOverlayView(
+                  customOverlayView = { modifier ->
+                    NotNavigatingOverlay(
+                        modifier = modifier,
+                        viewModel = viewModel,
+                        navigationMapState = navigationMapState,
+                        onTopOverlayBottomChanged = { destinationPreviewTopPaddingPx = it },
+                    )
+                  },
+              ),
+      onTapExit = { viewModel.stopNavigation() },
+      onMapLongClick = { position, screenPosition ->
+        Log.d(
+            "DemoNavigationScene",
+            "Long press at lat=${position.lat}, lng=${position.lng}, screen=$screenPosition",
+        )
+        viewModel.selectDestination(position)
+        NavigationMapClickResult.Consume
+      },
+      mapOptions =
+          MapOptions(
+              ornamentOptions =
+                  OrnamentOptions(
+                      isCompassEnabled = false,
+                      isScaleBarEnabled = false,
+                  ),
+          ),
+  ) { ui ->
+    DemoDroppedPinOverlay(sceneState.droppedPin)
+    VehiclePuck(ui)
+  }
+
+  if (sceneState.isDestinationSheetVisible) {
+    sceneState.selectedDestination?.let { destination ->
+      DestinationSelectionBottomSheet(
+          destination = destination,
+          onClose = { viewModel.clearSelectedDestination() },
+          onStartNavigation = { viewModel.startSelectedDestinationNavigation() },
+          onSheetHeightChanged = viewModel::setDestinationSheetHeight,
+      )
+    }
+  }
+}
+
+@Composable
+@MaplibreComposable
+private fun DemoDroppedPinOverlay(droppedPin: GeographicCoordinate?) {
+  val pinFeatureCollection = droppedPinFeatureCollectionOrNull(droppedPin) ?: return
+  val pointSource = rememberGeoJsonSource(GeoJsonData.Features(pinFeatureCollection))
+
+  CircleLayer(
+      id = "demo-dropped-pin",
+      source = pointSource,
+      color = const(Color.Red),
+      radius = const(10.dp),
+      strokeColor = const(Color.White),
+      strokeWidth = const(2.dp),
+  )
+}
+
+internal fun droppedPinFeatureCollectionOrNull(pin: GeographicCoordinate?) = pin?.let {
+  droppedPinFeatureCollection(it)
+}
+
+internal fun droppedPinFeatureCollection(pin: GeographicCoordinate) =
+    FeatureCollection(
+        Feature(
+            geometry = Point(longitude = pin.lng, latitude = pin.lat),
+            properties = buildJsonObject {},
+        ),
+    )
