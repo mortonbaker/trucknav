@@ -62,9 +62,10 @@ row "4 hold to remove" "hold shows Remove; tap removes; API count drops by one" 
 
 # 5 one tap = go from a tile, End works
 # Work first: Home may be 0 min away (tablet at home), which is nowhere to navigate to
-tapd "Close destinations"; sleep 1; tapd "Go: Work" || tapd "Go: Home"; nav=$(waitfor "End Navigation" 15); shot go
-[ "$nav" != none ] && a=PASS || a=FAIL
-row "5 tile go" "Home/Work tile starts navigation (End Navigation within 15 s)" "${nav}s" "$a" "go.png"
+tapd "Close destinations"; sleep 1; tapd "Go: Work" || tapd "Go: Home"; pv=$(waitfor "Start navigation" 12); shot preview
+tapd "Start navigation"; nav=$(waitfor "End Navigation" 15); shot go
+[ "$pv" != none ] && [ "$nav" != none ] && a=PASS || a=FAIL
+row "5 tile go" "tile -> route preview within 12 s -> Start -> End Navigation within 15 s (S17.7 flow)" "preview ${pv}s, navigating ${nav}s" "$a" "preview.png go.png"
 tapd "End Navigation"; sleep 2
 
 # 6 focused empty search shows Recents; typing hides the panel
