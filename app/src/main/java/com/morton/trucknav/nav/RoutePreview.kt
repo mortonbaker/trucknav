@@ -39,7 +39,7 @@ data class RouteCandidate(val route: Route, val minutes: Int, val miles: Double,
 
 object RoutePreview {
     private val adapter by lazy {
-        RouteAdapter.fromWellKnownRouteProvider(WellKnownRouteProvider.Valhalla(AppModule.valhallaUrl, "auto").withJsonOptions(mapOf("units" to "miles", "alternates" to 2)))
+        RouteAdapter.fromWellKnownRouteProvider(WellKnownRouteProvider.Valhalla(AppModule.valhallaUrl, "auto").withJsonOptions(mapOf("units" to "miles", "alternates" to 2, "filters" to mapOf("attributes" to listOf("shape_attributes.speed_limit", "shape_attributes.speed", "shape_attributes.length", "shape_attributes.time"), "action" to "include"))))
     }
 
     suspend fun candidates(from: UserLocation, to: uniffi.ferrostar.GeographicCoordinate): List<RouteCandidate> = withContext(Dispatchers.IO) {
