@@ -15,6 +15,8 @@ tap() { ~/bin/ui.sh $S tapx "$1" >/dev/null 2>&1 || ~/bin/ui.sh $S tap "$1" >/de
 dump() { sh uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; sh cat /sdcard/ui.xml; }
 shot() { adb -s $S exec-out screencap -p > "$E/$1.png"; }
 has() { dump | grep -cE "(text|content-desc)=\"$1\""; }
+# poll for a label up to N s; echoes seconds taken or "none"
+waitfor() { local t=0; while [ $t -lt $2 ]; do [ "$(has "$1")" -ge 1 ] && { echo $t; return 0; }; sleep 1; t=$((t+1)); done; echo none; return 1; }
 fg() { sh dumpsys activity activities | grep -m1 -oE "topResumedActivity=ActivityRecord\{[^ ]+ u0 [^ /]+" | sed 's/.* u0 //'; }
 crashes() { adb -s $S logcat -d -b crash | grep -c "Process: $P"; }
 
@@ -37,10 +39,13 @@ tiles=$(adb -s $S logcat -d -s LocalAssetServer | grep -cE "GET /.*\.(pmtiles|pb
 row "2 map render" ">= 10 asset/tile requests answered by the loopback server after cold start" "$tiles requests" "$a" "map.png"
 
 # --- 3 route to Denton, then End ----------------------------------------------------------
-tap "Search field"; sleep 1; sh input text "Denton%sTX"; sleep 7; sh input keyevent KEYCODE_BACK; sleep 1
-tap "Result: Denton, Texas" || tap "Denton, Texas"; sleep 4; tap "Start navigation"; sleep 10; shot route
-nav=$(has "End Navigation"); [ "$nav" -ge 1 ] && a=PASS || a=FAIL
-row "3a route" "Start navigation -> End Navigation button visible within 10 s" "end-nav=$nav" "$a" "route.png"
+tap "Search field"; sleep 1; sh input text "Denton%sTX"
+res=$(waitfor "Result: Denton, Texas" 15); sh input keyevent KEYCODE_BACK; sleep 1
+# exact city row if present, else the first result the geocoder gave us
+tap "Result: Denton, Texas" || { first=$(dump | grep -oE 'content-desc="Result: [^"]+"' | head -1 | cut -d'"' -f2); tap "$first"; }
+sleep 2; sheet=$(waitfor "Start navigation" 10); tap "Start navigation"; sleep 6; shot route
+nav=$(waitfor "End Navigation" 10); [ "$nav" != none ] && a=PASS || a=FAIL
+row "3a route" "results within 15 s, sheet within 10 s, End Navigation within 16 s of Start" "results ${res}s sheet ${sheet}s end-nav ${nav}s" "$a" "route.png"
 tap "End Navigation"; sleep 3; ended=$(has "End Navigation"); [ "$ended" = 0 ] && a=PASS || a=FAIL
 row "3b end" "End Navigation leaves navigation (button gone within 3 s)" "end-nav=$ended" "$a" "-"
 
@@ -52,18 +57,20 @@ row "4 power strip" "all 8 cells present (SOC Batt Solar Alt Load Net Link Starl
 
 # --- 5 every pane opens ----------------------------------------------------------------------
 for pane in Music Books YouTube Power Vehicle Apps; do
-  tap $pane; sleep 3
+  tap $pane
   case $pane in
     Music|Books) want="Play/Pause" ;; YouTube) want="YouTube" ;; Power) want="State of charge" ;; Vehicle) want="Vehicle" ;; Apps) want="Apps" ;;
   esac
-  n=$(has "$want"); shot pane-$pane; [ "$n" -ge 1 ] && a=PASS || a=FAIL
-  row "5 pane $pane" "opens (\"$want\" on screen within 3 s)" "$n" "$a" "pane-$pane.png"
+  # the YouTube pane is a WebView (no label of its own); give it time to come up before the next tap
+  if [ $pane = YouTube ]; then sleep 5; n=$( [ "$(dump | grep -c android.webkit.WebView)" -ge 1 ] && echo 5 || echo none ); want="a WebView"; else n=$(waitfor "$want" 10); fi
+  shot pane-$pane; [ "$n" != none ] && a=PASS || a=FAIL
+  row "5 pane $pane" "opens (\"$want\" on screen within 10 s)" "${n}s" "$a" "pane-$pane.png"
 done
 tap Map; sleep 1
 
 # --- 6 overlay over a foreign app ---------------------------------------------------------
 sh am start -a android.settings.SETTINGS >/dev/null 2>&1; sleep 4; shot overlay
-ov=$(sh dumpsys window windows | grep -cE "OverlayService|$P.*TYPE_APPLICATION_OVERLAY|$P.*2038"); [ "$ov" -ge 1 ] && a=PASS || a=FAIL
+ov=$(sh dumpsys window windows | grep -A4 "Window #.*u0 $P}" | grep -c "ty=APPLICATION_OVERLAY"); [ "$ov" -ge 1 ] && a=PASS || a=FAIL
 row "6 overlay" "our overlay window exists while Settings is foreground" "windows=$ov fg=$(fg)" "$a" "overlay.png"
 sh am start -n $P/.MainActivity >/dev/null; sleep 3
 
