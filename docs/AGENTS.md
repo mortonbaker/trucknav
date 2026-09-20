@@ -114,3 +114,4 @@ No lease conflicts with the tablet, no Wi-Fi to lose.
 | Layout, panes, rail, search, results, favorites, sheets, settings, styles, route overview, camera padding, NavGuard (install OsmAnd's APK on the emulator), mute (Google TTS present), nav log, crash gates, rotation, portrait | Real GPS quality and puck behaviour while moving, Wi-Fi/tailnet paths, relay board + Venus Pi on the truck network, Finamp/ABS audio-focus with the real apps, performance/thermal, immersive-mode quirks of the Samsung shell, long soaks |
 
 Default: prove it on the emulator, then confirm the hardware-dependent part on the tablet in one short lease window.
+| 2026-09-20 14:05 | claude-studio | S5 closed on 0.17.1; tree claim + tablet lease released. main = S5 + S17.1/S17.3; next versionCode 41. |
