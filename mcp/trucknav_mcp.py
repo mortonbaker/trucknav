@@ -65,5 +65,17 @@ def stop_navigation() -> dict:
     """End the current route."""
     return call("POST", "/api/stop")
 
+@mcp.tool()
+def get_settings() -> dict:
+    """Read persisted tablet settings. Secrets are masked to their last four characters."""
+    return call("GET", "/api/settings")
+
+@mcp.tool()
+def set_setting(key: str, value: str | None) -> dict:
+    """Persist a setting; null deletes it. Traffic keys: tomtomKey, googleMapsKey,
+    trafficProvider (tomtom|google|off). Supply personal keys at runtime only.
+    Returns settings with secret values masked; changes survive app restart."""
+    return call("PUT", "/api/settings", {key: value})
+
 if __name__ == "__main__":
     mcp.run()
