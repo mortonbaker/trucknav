@@ -44,6 +44,7 @@ data class DemoNavigationSceneState(
     val selectedDestination: DestinationSelection? = null,
     val isDestinationSheetVisible: Boolean = false,
     val destinationSheetHeightPx: Int = 0,
+    val searchResults: List<PhotonHit> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -143,6 +144,8 @@ class DemoNavigationViewModel(
         origin = origin,
     )
   }
+
+  fun setSearchResults(hits: List<PhotonHit>) { _sceneState.value = _sceneState.value.copy(searchResults = hits) }
 
   fun clearSelectedDestination() {
     _sceneState.value =

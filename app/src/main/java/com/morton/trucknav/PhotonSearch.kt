@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -53,17 +56,30 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
+import androidx.compose.foundation.layout.Column
 import uniffi.ferrostar.GeographicCoordinate
 
 // Address / place search against a Photon geocoder (komoot's public instance
 // by default; point photonUrl at a self-hosted one later). Results are biased
 // toward the current location. No API key, no Google.
-data class PhotonHit(val label: String, val coordinate: GeographicCoordinate)
+data class PhotonHit(
+    val label: String,
+    val coordinate: GeographicCoordinate,
+    val letter: String = "",          // A, B, C… matches the map badge
+    val distanceM: Double? = null,    // straight-line from the user, immediate
+    val etaS: Double? = null,         // Valhalla matrix, arrives a moment later
+) {
+    fun distanceText() = distanceM?.let { m -> val mi = m / 1609.344; if (mi < 10) "%.1f mi".format(mi) else "${mi.toInt()} mi" } ?: ""
+    fun etaText() = etaS?.let { s -> val m = (s / 60).toInt(); if (m < 60) "$m min" else "${m / 60} h ${m % 60} min" } ?: ""
+}
 
 @Composable
 fun PhotonSearch(
     userLocation: GeographicCoordinate?,
     modifier: Modifier = Modifier,
+    onResults: (List<PhotonHit>) -> Unit = {},   // the map draws badges for these
     onPick: (PhotonHit) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -74,9 +90,15 @@ fun PhotonSearch(
     val fieldFocus = remember { FocusRequester() }
 
     LaunchedEffect(query) {
-        if (query.length < 3) { hits = emptyList(); return@LaunchedEffect }
+        if (query.length < 3) { hits = emptyList(); onResults(emptyList()); return@LaunchedEffect }
         delay(350) // debounce typing
-        hits = withContext(Dispatchers.IO) { photon(query, userLocation) }
+        val raw = withContext(Dispatchers.IO) { photon(query, userLocation) }
+        // letter + straight-line distance now; ETA from Valhalla's matrix a moment later
+        val withDist = raw.map { h -> h.copy(distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
+        hits = withDist.sortedBy { it.distanceM ?: Double.MAX_VALUE }.take(6).mapIndexed { i, h -> h.copy(letter = ('A' + i).toString()) }
+        onResults(hits)
+        val etas = withContext(Dispatchers.IO) { matrixEta(userLocation, hits) }
+        if (etas != null) { hits = hits.mapIndexed { i, h -> h.copy(etaS = etas.getOrNull(i)) }; onResults(hits) }
     }
 
     // Search surface, cockpit rules: an opaque, elevated dark card so it reads
@@ -108,25 +130,32 @@ fun PhotonSearch(
                     )
                 }
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = ""; hits = emptyList(); dismiss() }, modifier = Modifier.size(44.dp)) {
+                    IconButton(onClick = { query = ""; hits = emptyList(); onResults(emptyList()); dismiss() }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
             }
         }
         if (hits.isNotEmpty()) {
-            Surface(shape = RoundedCornerShape(20.dp), color = SEARCH_SURFACE, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Column {
+            Surface(shape = RoundedCornerShape(20.dp), color = SEARCH_SURFACE, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(max = 330.dp)) {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                     hits.forEachIndexed { i, h ->
-                        Text(
-                            h.label,
-                            color = Color.White, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.semantics { contentDescription = "Result: " + h.label }
+                        Row(
+                            Modifier.semantics { contentDescription = "Result: " + h.label }
                                 .fillMaxWidth().heightIn(min = 72.dp)
-                                .clickable { query = ""; hits = emptyList(); dismiss(); onPick(h) }
-                                .wrapContentHeight(Alignment.CenterVertically)
-                                .padding(horizontal = 24.dp, vertical = 12.dp),
-                        )
+                                .clickable { query = ""; hits = emptyList(); onResults(emptyList()); dismiss(); onPick(h) }
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFF1f5f8b)), contentAlignment = Alignment.Center) {
+                                Text(h.letter, color = Color.White, fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
+                            Text(h.label, color = Color.White, fontSize = 21.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 14.dp))
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(h.distanceText(), color = Color.White, fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(h.etaText(), color = SEARCH_MUTED, fontSize = 15.sp)
+                            }
+                        }
                         if (i < hits.lastIndex) HorizontalDivider(color = Color(0xFF2a323c))
                     }
                 }
@@ -137,6 +166,25 @@ fun PhotonSearch(
 
 private val SEARCH_SURFACE = Color(0xFF10141a)
 private val SEARCH_MUTED = Color(0xFFaab4c0)
+
+private fun haversine(a: GeographicCoordinate, b: GeographicCoordinate): Double {
+    val r = 6371000.0; val dLat = Math.toRadians(b.lat - a.lat); val dLng = Math.toRadians(b.lng - a.lng)
+    val h = Math.sin(dLat / 2).let { it * it } + Math.cos(Math.toRadians(a.lat)) * Math.cos(Math.toRadians(b.lat)) * Math.sin(dLng / 2).let { it * it }
+    return 2 * r * Math.asin(Math.sqrt(h))
+}
+
+// One Valhalla matrix call for all results: drive time from the user to each.
+private fun matrixEta(from: GeographicCoordinate?, hits: List<PhotonHit>): List<Double?>? {
+    if (from == null || hits.isEmpty()) return null
+    return try {
+        val base = AppModule.valhallaUrl.removeSuffix("/route").removeSuffix("/")
+        val targets = hits.joinToString(",") { "{\"lat\":${it.coordinate.lat},\"lon\":${it.coordinate.lng}}" }
+        val body = "{\"sources\":[{\"lat\":${from.lat},\"lon\":${from.lng}}],\"targets\":[$targets],\"costing\":\"auto\"}"
+        val res = AppModule.okHttp.newCall(Request.Builder().url("$base/sources_to_targets").post(body.toRequestBody("application/json".toMediaType())).build()).execute().use { it.body?.string() } ?: return null
+        val row = Json.parseToJsonElement(res).jsonObject["sources_to_targets"]!!.jsonArray[0].jsonArray
+        row.map { it.jsonObject["time"]?.jsonPrimitive?.content?.toDoubleOrNull() }
+    } catch (e: Exception) { android.util.Log.w("PhotonSearch", "matrix: $e"); null }
+}
 
 private fun photon(q: String, near: GeographicCoordinate?): List<PhotonHit> = try {
     val bias = near?.let { "&lat=${it.lat}&lon=${it.lng}" } ?: ""

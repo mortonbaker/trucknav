@@ -3,6 +3,7 @@ package com.morton.trucknav
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,24 +77,27 @@ fun NotNavigatingOverlay(
   if (showStyles) MapStyleSheet(onDismiss = { showStyles = false })
 
   if (!uiState.isNavigating()) {
+    // Search sits in its own box so the results card can grow (the grid cell
+    // below is a third of the map and was clipping every row after A).
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    Box(modifier.fillMaxSize().padding(top = 16.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
+      Box(
+          modifier = Modifier.fillMaxWidth(if (landscape) 0.58f else 1f).onGloballyPositioned { coordinates ->
+            onTopOverlayBottomChanged(coordinates.boundsInRoot().bottom.roundToInt())
+          },
+          contentAlignment = Alignment.TopCenter,
+      ) {
+        PhotonSearch(userLocation = location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
+          viewModel.selectDestination(
+              location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
+              label = hit.label,
+              origin = DestinationSelectionOrigin.SearchResult,
+          )
+        }
+      }
+    }
     InnerGridView(
         modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
-        topCenter = {
-          Box(
-              modifier =
-                  Modifier.onGloballyPositioned { coordinates ->
-                    onTopOverlayBottomChanged(coordinates.boundsInRoot().bottom.roundToInt())
-                  }
-          ) {
-            PhotonSearch(userLocation = location?.coordinates) { hit ->
-              viewModel.selectDestination(
-                  location = android.location.Location("photon").apply { latitude = hit.coordinate.lat; longitude = hit.coordinate.lng },
-                  label = hit.label,
-                  origin = DestinationSelectionOrigin.SearchResult,
-              )
-            }
-          }
-        },
         centerEnd = {
           NavigationUIButton(
               onClick = { navigationMapState.recenter(isNavigating = false) },

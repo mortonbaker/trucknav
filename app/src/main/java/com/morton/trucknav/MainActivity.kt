@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity(), AndroidTtsStatusListener {
     // not be initialized yet, but the language won't save us from doing it anyways. This will
     // result in a confusing NPE.
     AppModule.ttsObserver.statusObserver = this
-    AppModule.ferrostarCore.spokenInstructionObserver = AppModule.ttsObserver
+    AppModule.ferrostarCore.spokenInstructionObserver = AppModule.voiceGate   // mute + alert classes gate in front of TTS
 
     // Set up the location provider
     //    AppModule.locationProvider.lastLocation = initialSimulatedLocation
