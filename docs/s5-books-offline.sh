@@ -60,7 +60,7 @@ done
 grep -q manifest.json "$E/d1-ls.txt" || ok=0
 row "D1 download" "4 track files, each size == server file size; manifest.json present" "took $((T1-T0)) s;$detail" "$([ $ok = 1 ] && echo PASS || echo FAIL)" "d1-ls.txt"
 # --- D2 plays from local files ----------------------------------------------------------
-svc SET_SPEED --ef speed 1.0
+svc SPEED --ef speed 1.0
 tap "$TITLE" || { tap Back; svc PLAY --es book_id $BOOK; }; sleep 8
 src=$(adb -s $S logcat -d -s BooksPlayer | grep -oE 'opened .*source=[a-z]+ session=[a-z]+' | tail -1)
 shot d2-pane; dump > "$E/d2-ui.xml"
@@ -83,7 +83,7 @@ sh rm -f /sdcard/s5-offline.log
 cat > "$E/sampler.sh" <<SH
 svc wifi disable
 i=0; while [ \$i -lt $((CUT/5)) ]; do
-  echo "\$(date +%s) \$(dumpsys media_session | grep -A2 package=$P | tr '\n' ' ')" >> /sdcard/s5-offline.log
+  echo "\$(date +%s) \$(dumpsys media_session | grep -A12 package=$P | grep state=PlaybackState)" >> /sdcard/s5-offline.log
   sleep 5; i=\$((i+1))
 done
 svc wifi enable
@@ -93,6 +93,9 @@ sh "nohup sh /sdcard/s5-sampler.sh >/dev/null 2>&1 &"
 TC=$(date +%s); echo "cut at $(date +%T), sleeping $((CUT+20)) s"; sleep $((CUT+20))
 waitadb || { row "D3 offline 5 min" "adb back after the cut" "tablet never came back" "BLOCKED" "-"; }
 TR=$(date +%s); echo "adb back after $((TR-TC)) s"
+# Hardware touches (InputReader Btn_touch) during the cut are a human on the tablet, not the app.
+adb -s $S logcat -d -v epoch | awk -v a=$TC -v b=$TR '/InputReader.*Btn_touch.*value=1/ && $1+0>=a && $1+0<=b' > "$E/touches-during-cut.txt"
+TOUCH=$(wc -l < "$E/touches-during-cut.txt"); echo "hardware touches during cut: $TOUCH"
 adb -s $S pull /sdcard/s5-offline.log "$E/offline-samples.txt" >/dev/null
 python3 - "$E/offline-samples.txt" "${OFF[0]}" "${OFF[1]}" "${OFF[2]}" "${OFF[3]}" > "$E/d3-analysis.txt" <<'PY'
 import re,sys
@@ -112,6 +115,7 @@ print("RESULT", "PASS" if ok else "FAIL")
 PY
 cat "$E/d3-analysis.txt"
 r=$(grep -oE 'RESULT [A-Z]+' "$E/d3-analysis.txt" | cut -d' ' -f2)
+[ "$TOUCH" -gt 0 ] && [ "$r" != PASS ] && r="BLOCKED (human touched the tablet $TOUCH x during the cut)"
 row "D3 offline 5 min" ">=50 samples all PLAYING, book-time monotonic, crosses a track boundary, advance == wall ±5%" "$(head -1 "$E/d3-analysis.txt")" "${r:-FAIL}" "offline-samples.txt"
 
 # --- D4 queued sync flushes ---------------------------------------------------------------
@@ -136,7 +140,7 @@ row "D5b stream fallback" "reopening the book streams (source=stream)" "$src" "$
 adb -s $S logcat -d -b crash > "$E/crash.txt"; c=$(grep -c "Process: $P" "$E/crash.txt")
 row "Crash gate" "0 crashes for $P" "$c" "$([ "$c" = 0 ] && echo PASS || echo FAIL)" "crash.txt"
 tap "Play/Pause"; sleep 1   # leave it paused, as found
-[ -n "$SPEED0" ] && svc SET_SPEED --ef speed $SPEED0
+[ -n "$SPEED0" ] && svc SPEED --ef speed $SPEED0
 sh rm -f /sdcard/s5-sampler.sh
 adb -s $S logcat -d > "$E/post-logcat.txt"; sh dumpsys media_session > "$E/post-media.txt"; shot post
 sh rm -f /sdcard/s5-offline.log /sdcard/ui.xml
