@@ -37,7 +37,7 @@ class SaneLocationProvider(private val inner: NavigationLocationProviding) : Nav
             val g = lastGood
             if (g != null) {
                 val dtMs = l.elapsedRealtimeNanos / 1_000_000 - g.elapsedRealtimeNanos / 1_000_000
-                if (dtMs in 1..STALE_MS) {
+                if (dtMs in 1000..STALE_MS) {
                     val kmh = g.distanceTo(l) / 1000.0 / (dtMs / 3_600_000.0)
                     if (kmh > MAX_JUMP_KMH) return "jump ${g.distanceTo(l).toInt()} m in ${dtMs / 1000} s (${kmh.toInt()} km/h)"
                 }

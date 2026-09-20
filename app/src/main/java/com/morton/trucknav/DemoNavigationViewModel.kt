@@ -54,7 +54,12 @@ class DemoNavigationViewModel(
     // This is a simple example, but these would typically be dependency injected
     val ferrostarCore: FerrostarCore = AppModule.ferrostarCore,
     val locationProvider: NavigationLocationProvider = AppModule.locationProvider,
-    annotationPublisher: AnnotationPublisher<*> = valhallaExtendedOSRMAnnotationPublisher(),
+    annotationPublisher: AnnotationPublisher<*> = com.stadiamaps.ferrostar.core.annotation.DefaultAnnotationPublisher(
+        json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false; isLenient = true },
+        serializer = com.stadiamaps.ferrostar.core.annotation.valhalla.ValhallaOSRMExtendedAnnotation.serializer(),
+        speedLimitMapper = { it?.speedLimit },
+        onError = { com.morton.trucknav.nav.NavLog.log("annotation", "decode failed: $it") },
+    ),
 ) : DefaultNavigationViewModel(ferrostarCore, annotationPublisher) {
 
   private val _hasLocationPermission = MutableStateFlow(false)
@@ -197,6 +202,7 @@ class DemoNavigationViewModel(
     val gen = ++navGeneration
     com.morton.trucknav.nav.Favorites.noteDestination(name, destination)
     com.morton.trucknav.nav.NavLog.log("start", "gen=$gen preview route ${"%.1f".format(route.distance / 1609.344)}mi to=$destination name=$name")
+    com.morton.trucknav.nav.NavLog.route("preview gen=$gen", route)
     if (simulated.value) locationProvider.enableSimulationOn(route)
     if (com.morton.trucknav.nav.NavGuard.foreign.value != null) com.morton.trucknav.nav.NavGuard.stopForeign("TruckNav is starting a route")
     if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route)

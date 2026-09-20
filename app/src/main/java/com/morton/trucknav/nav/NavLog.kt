@@ -58,7 +58,7 @@ object NavLog {
 
     fun route(tag: String, r: Route) {
         val dur = r.steps.sumOf { it.duration }
-        log("route", "$tag distance=${"%.1f".format(r.distance / 1609.344)}mi duration=${(dur / 60).toInt()}min steps=${r.steps.size} points=${r.geometry.size} to=${r.waypoints.lastOrNull()?.coordinate}")
+        log("route", "$tag annotated=${r.steps.count { (it.annotations?.size ?: 0) > 0 }}/${r.steps.size} first=${r.steps.firstOrNull()?.annotations?.firstOrNull()?.take(80)} distance=${"%.1f".format(r.distance / 1609.344)}mi duration=${(dur / 60).toInt()}min steps=${r.steps.size} points=${r.geometry.size} to=${r.waypoints.lastOrNull()?.coordinate}")
     }
 
     // Watches the UI state the panes render from, so what we log is what the driver saw.
@@ -79,7 +79,7 @@ object NavLog {
             if (dev != lastDeviation) { log("deviation", "${dev ?: "none"} $where"); lastDeviation = dev }
             val now = System.currentTimeMillis()
             if (nav && now - lastProgressAt >= 10_000) {
-                s.progress?.let { p -> log("progress", "remaining=${"%.2f".format(p.distanceRemaining / 1609.344)}mi eta=${(p.durationRemaining / 60).toInt()}min nextManeuver=${p.distanceToNextManeuver.toInt()}m road=${s.currentStepRoadName} steps=${s.remainingSteps?.size} $where") }
+                s.progress?.let { p -> log("progress", "limit=${s.currentAnnotation?.speedLimit?.toString() ?: "-"} remaining=${"%.2f".format(p.distanceRemaining / 1609.344)}mi eta=${(p.durationRemaining / 60).toInt()}min nextManeuver=${p.distanceToNextManeuver.toInt()}m road=${s.currentStepRoadName} steps=${s.remainingSteps?.size} $where") }
                 lastProgressAt = now
             }
         }

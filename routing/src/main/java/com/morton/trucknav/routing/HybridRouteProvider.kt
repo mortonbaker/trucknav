@@ -32,7 +32,9 @@ class HybridRouteProvider(
     private val log: (String) -> Unit = {},
 ) : CustomRouteProvider, Closeable {
     private val adapter = RouteAdapter.fromWellKnownRouteProvider(
-        WellKnownRouteProvider.Valhalla(endpoint, "auto").withJsonOptions(mapOf("units" to "miles")))
+        WellKnownRouteProvider.Valhalla(endpoint, "auto").withJsonOptions(mapOf("units" to "miles",
+            // speed-limit annotations for the MUTCD sign (Valhalla shape attributes)
+            "filters" to mapOf("attributes" to listOf("shape_attributes.speed_limit", "shape_attributes.speed", "shape_attributes.length", "shape_attributes.time"), "action" to "include"))))
     private val http = client.newBuilder().callTimeout(Duration.ofSeconds(3))
         .connectTimeout(Duration.ofSeconds(3)).retryOnConnectionFailure(false).build().toOkHttpClientProvider()
     private val offline = OfflineValhalla(context.applicationContext, tiles)
