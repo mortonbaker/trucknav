@@ -30,11 +30,13 @@ Order of work from here:
 | S9 | Harness + runbook | small | DONE 0.21.0. |
 | S7 | Look and feel (icon, palette, typography) | small | Cosmetic; after the behaviour is right. |
 | S6 | On-device routing | large | DONE 2026-09-20 (Astra, 0.22.x): server-first, on-device Valhalla fallback 2.1 s on the tablet. |
-| S8 | Settings pane | small | Operator said later. |
+| S8 | Settings pane | small | Folded into S20. |
 | S10 | Pi ACL, Photon self-host, Kindles | operator | Desktop tasks. |
 | S15 | Tile prefetch along the route (B5) | medium | Research first (MapLibre prefetch, ambient cache, along-route warmup). |
 | S16 | Relay board on every network + Pi flow verified (B6) | small | Vehicle pane shipped v0.14.0; yaml flash needs the truck at home. |
 | S18 | Voice commands (STT + intents, Spark fallback) | large | After S17. |
+| S19 | Trip bar + stops (Google/Tesla style) | medium | NEXT (operator 2026-09-20): next-stop name in the bar, stop list, numbered stop pins, stop arrival + auto-continue, remove a stop. |
+| S20 | Usable by others: settings screen, no hardcoded places, vehicle upload API/MCP | medium | Operator 2026-09-20. Absorbs S8. Home/Work/vehicle/URLs/token all runtime settings; first-run flow; README setup. |
 
 Housekeeping, not slices: DHCP reservation / `manual_ip` for the relay board; adopt it into HA; the tablet's Venus MQTT link showed `MqttException` while on the phone hotspot on 2026-09-20 (Pi reachable over the tailnet at that moment — investigate under S16).
 
@@ -351,6 +353,32 @@ Criterion (grey < 1 % for 5 min): PASS in every mode. The discriminating number 
 - **Add a stop** (17.11): pin-plus button under Layers while navigating → the search box opens under the instruction card → pick → route now → stop → (earlier stops) → destination replaces the trip via `replaceRoute`; camera returns to following. `POST /api/add_stop` and MCP `add_stop` do the same (409 when idle). A stop is a via point (WaypointWithinRange 100 m); no pause at the stop.
 - **Core lock** (B11): `NavLock` serialises every FerrostarCore mutation with every fix delivered to it (`LockedLocationProvider`); without it a `replaceRoute` racing `onLocationUpdated` restores the discarded route.
 **Status 2026-09-20:** all of the above DONE and measured on the emulator (`docs/SMOKE-TEST.md` "S17.5–S17.11"); tablet has 0.28.0.
+
+## S19 — Trip bar and stops (medium) — operator 2026-09-20: "show the stops like Tesla and Google do; I can't see the next destination in the ETA bar"
+**What the products do** (verified 2026-09-20; sources in `docs/NAV-AUDIT.md` §9):
+- Google Maps: up to 9 stops; the trip bar (ETA · minutes · miles) counts to the **next stop**, a chevron expands the stop list; at a stop it announces arrival and **automatically reroutes to the next destination**; stops are removable during the trip. Multi-stop ETAs ignore dwell time.
+- Tesla: "Add a Stop" inserts before the destination; the direction list shows **each stop with its own ETA**; a progress bar runs to the next stop; a stop cannot be removed without cancelling the trip (we beat that).
+- Android Auto `NavigationTemplate`: the travel-estimate card carries arrival time, remaining time, remaining distance — numbers only, no name; the maneuver card is the only text. So "name in the bar" is a Google-Maps-phone / Tesla convention, not an AA one; we follow Maps/Tesla because the 4Runner screen is the phone UI, not a projected one.
+
+**Design**
+- Replace Ferrostar's `TripProgressView` (`NavigationViewComponentBuilder.withProgressView`) with `nav/TripBar.kt`: line 1 `→ Kroger Flower Mound` (next stop; the destination when there are none), line 2 `ETA · min · mi` **to the next stop**, plus a small `Home 6:41 PM` final ETA when stops exist; a chevron/tap expands the **stop list** (each row: number, name, ETA, ✕ remove) over the bar; End stays where it is.
+- Map: numbered stop pins (1, 2, …) and a checkered flag on the destination, same palette as the lettered search badges (`nav/SearchResults.kt` style).
+- Per-leg ETAs from Ferrostar: `TripProgress` is to the destination only; leg boundaries come from the route's waypoint indices (Valhalla legs). Compute leg remaining = distance to the next waypoint along the geometry, time by the same ratio; refine later with Valhalla's per-leg summary carried in `RouteCandidate`.
+- Stop arrival: `remainingWaypoints` drops → card "Arrived at <stop>" + voice "You have arrived at <stop>. Continuing to <next>." (class `arrival`), auto-continue (Google behaviour); no pause, the card clears after 10 s or on tap.
+- Remove a stop: rebuild waypoints without it and `replaceRoute` under `NavLock` (same path as add).
+- Ordering: new stop goes **next** (current behaviour; Maps and Tesla agree). Reorder later via drag in the list if ever needed.
+
+**Done when** (emulator, `docs/emu-stops.sh`): (a) a trip with two stops shows `→ <stop1>` and ETA/min/mi to stop 1 in the bar, final ETA small, list shows 3 rows with ascending ETAs; (b) map has pins 1, 2 and a flag; (c) driving past stop 1 (fake fixes) logs `stop-passed`, speaks the arrival once, bar flips to `→ <stop2>` within 2 s, no reroute; (d) ✕ on stop 2 → `route stop-remove … steps=` and the bar/pins update, trip still NAVIGATING; (e) numbers to the next stop are within 5 % of Valhalla's leg summary; (f) 0 crashes.
+
+## S20 — Usable by others (medium) — operator 2026-09-20: "a plan to make this usable by others"; absorbs S8
+Today the app is built around one truck: `homeLat/homeLng` are BuildConfig, the vehicle image is a drawable, URLs and the API token are `local.properties`. Somebody else has to edit source to use it. Goal: **build once, configure on the tablet**, and everything an agent needs is discoverable through the API/MCP.
+- **Settings pane** (rail entry "Settings", Material, driving-sized): Places (Home, Work: set from current location / search / map; clear), Vehicle (current image, "Replace…" via file picker, front-up top-down guidance, size preview on the map), Servers (Valhalla, Photon, basemap style URL, Audiobookshelf + login, Venus host, relay board), Units (mi/km), Voice classes + Auto night (move out of the Layers sheet; Layers keeps styles only), API (token shown as QR + text, Regenerate, port), About (version, log export, offline pack status). Stored in `files/settings.json`; `local.properties` becomes build-time defaults only, and the app runs with none of them set.
+- **No hardcoded places**: delete `homeLat/homeLng`; the initial camera = last known fix, else the basemap extract centre, else the whole extract; Home/Work exist only as favorites (`kind=home|work`). `GET /api/state` reports them; `PUT /api/favorites/home` / `/work` set them.
+- **Vehicle upload**: `PUT /api/vehicle` (image/png or image/jpeg, ≤ 2 MB, transparent background, nose up, roughly square; server re-scales to 256 px, stores `files/vehicle.png`), `GET /api/vehicle` (current image + spec), `DELETE` restores the default silhouette; `VehiclePuck` hot-reloads. MCP `upload_vehicle(path)` whose docstring carries the image spec so an agent can prepare one from a photo (remove background, top-down crop) before uploading; `get_settings` / `set_setting(key, value)` / `set_home` / `set_work` mirror the pane.
+- **First run**: no token → generate one and show it on the Settings/API screen; no basemap → a screen that says what to push where (`docs/RUNBOOK.md` steps) instead of a grey map; no Valhalla URL → on-device routing only, said plainly in the strip.
+- **Docs**: README "Set up for your own truck" (10 steps, no source edits), API reference (`docs/API.md`) generated from the handler table, MCP README with the vehicle spec.
+
+**Done when**: (a) a clean tablet/emulator with an empty `local.properties` (no home, no token, no URLs) boots to a usable map, generates a token, and every setting in the pane can be set from the screen and read back via `GET /api/settings`; (b) `PUT /api/vehicle` with a 512 px PNG changes the puck within 2 s, survives restart, `DELETE` restores it; (c) MCP `set_home` from an agent moves the Home tile; (d) `grep -r homeLat app/` is empty; (e) `docs/RUNBOOK.md` setup section followed by a second person (or a fresh emulator profile) yields a working install; (f) 0 crashes across the cockpit smoke.
 
 ## S18 — Voice (large, later)
 Push-to-talk / wake word → on-device STT (Vosk/whisper.cpp small) with a home fallback (Spark over the tailnet) → intents: navigate to <favorite|place>, toggle <relay>, play <book|music>, style <x>, mute. Not before S17.
