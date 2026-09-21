@@ -26,21 +26,26 @@ data class AbsPlaySession(val sessionId: String, val title: String, val author: 
 
 object AbsClient {
     private const val TAG = "AbsClient"
-    private val base = BuildConfig.absUrl.trimEnd('/')
+    private val base get() = com.morton.trucknav.settings.Configuration.value("absUrl").trimEnd('/')
     @Volatile private var token: String? = null
     fun tokenOrEmpty(): String = token ?: ""
-    suspend fun ensureToken(): String? = token ?: login()
+    @Volatile private var credentials = ""
+    private fun checkCredentials() {
+        val current = listOf("absUrl", "absUser", "absPass").joinToString("\u0000") { com.morton.trucknav.settings.Configuration.value(it) }
+        if (current != credentials) { credentials = current; token = null }
+    }
+    suspend fun ensureToken(): String? { checkCredentials(); return token ?: login() }
 
     private suspend fun login(): String? = withContext(Dispatchers.IO) {
         try {
-            val body = """{"username":"${BuildConfig.absUser}","password":"${BuildConfig.absPass}"}""".toRequestBody("application/json".toMediaType())
+            val body = org.json.JSONObject().put("username", com.morton.trucknav.settings.Configuration.value("absUser")).put("password", com.morton.trucknav.settings.Configuration.value("absPass")).toString().toRequestBody("application/json".toMediaType())
             val res = AppModule.okHttp.newCall(Request.Builder().url("$base/login").post(body).build()).execute().use { it.body?.string() } ?: return@withContext null
             Json.parseToJsonElement(res).jsonObject["user"]!!.jsonObject["token"]!!.jsonPrimitive.content.also { token = it }
         } catch (e: Exception) { Log.w(TAG, "login: $e"); null }
     }
 
     private suspend fun get(path: String): String? = withContext(Dispatchers.IO) {
-        val t = token ?: login() ?: return@withContext null
+        val t = ensureToken() ?: return@withContext null
         try {
             val r = AppModule.okHttp.newCall(Request.Builder().url("$base$path").header("Authorization", "Bearer $t").build()).execute()
             if (r.code == 401) { token = null; return@withContext null }
@@ -86,7 +91,7 @@ object AbsClient {
     }
 
     private suspend fun send(method: String, path: String, json: String): String? = withContext(Dispatchers.IO) {
-        val t = token ?: login() ?: return@withContext null
+        val t = ensureToken() ?: return@withContext null
         try {
             val body = json.toRequestBody("application/json".toMediaType())
             val r = AppModule.okHttp.newCall(Request.Builder().url("$base$path").header("Authorization", "Bearer $t").method(method, body).build()).execute()

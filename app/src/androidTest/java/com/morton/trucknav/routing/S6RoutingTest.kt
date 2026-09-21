@@ -59,7 +59,7 @@ class S6RoutingTest {
         SystemClock.sleep(5000) // Let the initial local tile requests settle before the camera transition.
         val vm = AppModule.viewModel
         waitFor("GPS location received") { vm.location.value != null }
-        assertTrue("Test GPS must be inside the region", kotlin.math.abs(vm.location.value!!.coordinates.lat - BuildConfig.homeLat) < 0.02)
+        assertTrue("Test GPS must be inside the region", kotlin.math.abs(vm.location.value!!.coordinates.lat - com.morton.trucknav.settings.InitialPosition.coordinate.lat) < 0.02)
         instrumentation.runOnMainSync { vm.selectDestination(destination.single().coordinate, "S6 acceptance destination") }
         tap(context.getString(com.morton.trucknav.R.string.start_navigation))
         waitFor("Offline navigation started") { vm.navigationUiState.value.isNavigating() || vm.routeError.value != null }

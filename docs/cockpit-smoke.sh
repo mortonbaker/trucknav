@@ -33,7 +33,7 @@ home=$(sh cmd package resolve-activity --brief -a android.intent.action.MAIN -c 
 sh am force-stop $P; sleep 2; sh input keyevent KEYCODE_HOME; sleep 8
 f=$(fg); [ "$home" = "$P/.MainActivity" ] && [ "$f" = "$P" ] && a=PASS || a=FAIL
 row "1 boot" "HOME resolves to $P/.MainActivity and it is foreground 8 s after HOME" "home=$home fg=$f" "$a" "-"
-tap "Got it"; sleep 1
+tap "Got it"; sleep 1; tap "Continue to map" >/dev/null 2>&1; sleep 1   # S20 first-run card (once per install)
 
 # --- 2 map render: local tile server served >= 10 tiles ----------------------------------
 tap Map; sleep 6; shot map

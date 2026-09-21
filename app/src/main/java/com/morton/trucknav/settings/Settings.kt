@@ -42,6 +42,12 @@ object Settings {
         require(changes.keys.all { it.matches(Regex("[A-Za-z][A-Za-z0-9_.-]{0,79}")) }) { "Invalid setting key" }
         changes["trafficProvider"]?.let { require(it in setOf("tomtom", "off")) { "trafficProvider: tomtom|off" } }
         require(changes["googleMapsKey"] == null) { "Google traffic is no longer supported" }
+        changes["units"]?.let { require(it in setOf("imperial", "metric")) { "units: imperial|metric" } }
+        changes["autoNight"]?.let { require(it in setOf("true", "false")) { "autoNight: true|false" } }
+        changes.filterKeys { it.endsWith("Url") }.values.filterNotNull().filter { it.isNotBlank() }.forEach {
+            val uri = java.net.URI(it)
+            require(uri.scheme in setOf("http", "https") && uri.host != null) { "Server URL requires http(s) and host" }
+        }
         val next = values.toMutableMap()
         changes.forEach { (key, value) -> if (value == null) next.remove(key) else next[key] = value }
         val stream = file.startWrite()
