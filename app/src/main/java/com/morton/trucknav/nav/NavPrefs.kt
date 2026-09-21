@@ -1,6 +1,7 @@
 package com.morton.trucknav.nav
 
 import android.content.Context
+import com.morton.trucknav.settings.Settings
 import com.morton.trucknav.MapStyle
 import com.morton.trucknav.MapStyles
 import kotlinx.coroutines.CoroutineScope
@@ -26,23 +27,33 @@ object NavPrefs {
     private val _autoNight = MutableStateFlow(true)
     val autoNight: StateFlow<Boolean> = _autoNight
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var initialized = false
     fun init(c: Context) {
         ctx = c.applicationContext
-        val p = ctx.getSharedPreferences("nav", Context.MODE_PRIVATE)
-        _disabled.value = p.getStringSet("voice_off", emptySet()) ?: emptySet()
-        _autoNight.value = p.getBoolean("auto_night", true)
+        if (initialized) return
+        initialized = true
+        _disabled.value = Settings.get("voiceDisabled").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+        _autoNight.value = Settings.get("autoNight") != "false"
         gate?.disabledClasses = _disabled.value
+        scope.launch { Settings.flow("voiceDisabled").collect { value ->
+            _disabled.value = value.orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+            gate?.disabledClasses = _disabled.value
+        } }
+        scope.launch { Settings.flow("autoNight").collect { value ->
+            _autoNight.value = value != "false"
+            NightMode.evaluate(force = true)
+        } }
     }
     fun setClass(cls: String, enabled: Boolean) {
-        _disabled.value = if (enabled) _disabled.value - cls else _disabled.value + cls
-        ctx.getSharedPreferences("nav", Context.MODE_PRIVATE).edit().putStringSet("voice_off", _disabled.value).apply()
-        gate?.disabledClasses = _disabled.value
-        NavLog.log("prefs", "voice class $cls ${if (enabled) "on" else "off"}")
+        val disabled = if (enabled) _disabled.value - cls else _disabled.value + cls
+        Settings.set("voiceDisabled", disabled.sorted().joinToString(","))
+        _disabled.value = disabled
+        gate?.disabledClasses = disabled
     }
     fun setAutoNight(on: Boolean) {
+        Settings.set("autoNight", on.toString())
         _autoNight.value = on
-        ctx.getSharedPreferences("nav", Context.MODE_PRIVATE).edit().putBoolean("auto_night", on).apply()
-        NavLog.log("prefs", "auto night ${if (on) "on" else "off"}")
         NightMode.evaluate(force = true)
     }
 }

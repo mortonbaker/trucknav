@@ -58,31 +58,4 @@ class TomTomTraffic internal constructor(private val client: OkHttpClient, priva
     }
 }
 
-class GoogleTraffic internal constructor(private val client: OkHttpClient, private val base: String = "https://routes.googleapis.com") : TrafficProvider {
-    override val id = "google"
-    override fun flowTileUrl(z: Int, x: Int, y: Int): String? = null
-    override suspend fun incidents(bbox: TrafficBounds): List<TrafficIncident> = emptyList()
-    override suspend fun etaWithTraffic(polyline: List<TrafficPoint>): Duration? {
-        val credential = Settings.get("googleMapsKey")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        if (polyline.size < 2) return null
-        val points = sampleRoute(polyline, 27) // max 25 intermediates + origin/destination
-        fun waypoint(p: TrafficPoint, via: Boolean) = buildJsonObject {
-            putJsonObject("location") { putJsonObject("latLng") { put("latitude", p.lat); put("longitude", p.lng) } }
-            if (via) put("via", true)
-        }
-        val body = buildJsonObject {
-            put("origin", waypoint(points.first(), false)); put("destination", waypoint(points.last(), false))
-            putJsonArray("intermediates") { points.drop(1).dropLast(1).forEach { add(waypoint(it, true)) } }
-            put("travelMode", "DRIVE"); put("routingPreference", "TRAFFIC_AWARE"); put("computeAlternativeRoutes", false)
-        }
-        val request = Request.Builder().url("$base/directions/v2:computeRoutes")
-            .header("X-Goog-Api-Key", credential).header("X-Goog-FieldMask", "routes.duration")
-            .post(body.toString().toRequestBody(JSON)).build()
-        val json = Json.parseToJsonElement(client.trafficBytes(request).decodeToString()).jsonObject
-        val seconds = json["routes"]?.jsonArray?.firstOrNull()?.jsonObject?.get("duration")?.jsonPrimitive?.content?.removeSuffix("s")?.toDoubleOrNull() ?: return null
-        return seconds.takeIf { it.isFinite() && it > 0 }?.let { Duration.ofMillis((it * 1000).toLong()) }
-    }
-    override suspend fun testKey(): String = if (etaWithTraffic(listOf(TrafficPoint(32.9, -97.3), TrafficPoint(32.901, -97.3))) != null) "OK — ETA only (Google Maps)" else "No key or no route returned"
-}
-
 private val JSON = "application/json; charset=utf-8".toMediaType()

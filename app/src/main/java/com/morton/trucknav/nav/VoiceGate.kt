@@ -18,7 +18,19 @@ class VoiceGate(private val tts: AndroidTtsObserver) : SpokenInstructionObserver
     // Class of the last instruction Ferrostar handed us (muted or not).
     @Volatile var lastClass: String? = null
 
+    @Volatile var intermediateArrival: Boolean = false
     override fun onSpokenInstructionTrigger(instruction: SpokenInstruction) {
+        // Intermediate arrivals belong to the waypoint transition, not the router's
+        // generic destination utterance. This prevents two arrival syntheses.
+        if (intermediateArrival && classify(instruction.text) == "arrival") return
+        deliver(instruction)
+    }
+    fun sayStopArrival(name: String, next: String) {
+        val text = "You have arrived at " + name + ". Continuing to " + next + "."
+        NavLog.log("voice", "stop-arrival saying: " + text)
+        deliver(SpokenInstruction(text, null, 0.0, java.util.UUID.randomUUID()))
+    }
+    private fun deliver(instruction: SpokenInstruction) {
         val cls = classify(instruction.text); lastClass = cls
         if (tts.isMuted) { NavLog.log("voice", "muted, dropped: \"${instruction.text}\""); return }
         if (cls in disabledClasses) { NavLog.log("voice", "class $cls off, dropped: \"${instruction.text}\""); return }

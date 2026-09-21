@@ -22,7 +22,7 @@ class TrafficProviderTest {
     private val saved = mutableMapOf<String, String?>()
     @Before fun setup() {
         Settings.init(InstrumentationRegistry.getInstrumentation().targetContext)
-        listOf("tomtomKey", "googleMapsKey").forEach { saved[it] = Settings.get(it); Settings.set(it, UUID.randomUUID().toString()) }
+        listOf("tomtomKey").forEach { saved[it] = Settings.get(it); Settings.set(it, UUID.randomUUID().toString()) }
     }
     @After fun restore() { saved.forEach { (k,v) -> Settings.set(k,v) } }
     private fun client(code: Int = 200, body: String, inspect: (Request) -> Unit = {}): OkHttpClient = OkHttpClient.Builder()
@@ -48,34 +48,25 @@ class TrafficProviderTest {
         Settings.set("tomtomKey", null)
         assertNull(provider.flowTileUrl(12,100,200)); assertNull(provider.etaWithTraffic(points))
     }
-    @Test fun googleEtaOnlyWithOrderedViaPoints() = runBlocking {
-        val provider = GoogleTraffic(client(body = """{"routes":[{"duration":"1140.5s"}]}""") { req ->
-            assertEquals(Settings.get("googleMapsKey"), req.header("X-Goog-Api-Key"))
-            assertEquals("routes.duration", req.header("X-Goog-FieldMask"))
-            assertNull(req.url.queryParameter("key"))
-            val buffer = okio.Buffer(); req.body!!.writeTo(buffer)
-            val json = Json.parseToJsonElement(buffer.readUtf8()).jsonObject
-            assertEquals("TRAFFIC_AWARE", json["routingPreference"]!!.jsonPrimitive.content)
-            assertEquals(true, json["intermediates"]!!.jsonArray.first().jsonObject["via"]!!.jsonPrimitive.boolean)
-        })
-        assertEquals(1140500, provider.etaWithTraffic(points)!!.toMillis())
-        assertNull(provider.flowTileUrl(1,0,0)); assertTrue(provider.incidents(TrafficBounds(-98.0,32.0,-97.0,33.0)).isEmpty())
-        Settings.set("googleMapsKey", null); assertNull(provider.etaWithTraffic(points))
-    }
     @Test fun unauthorizedReportsOnlyHttpStatus() = runBlocking {
-        for (provider in listOf(TomTomTraffic(client(403,"secret must not reflect")), GoogleTraffic(client(403,"secret must not reflect")))) {
+        for (provider in listOf(TomTomTraffic(client(403,"secret must not reflect")))) {
             try { provider.testKey(); fail("must reject") } catch (error: TrafficHttpError) { assertEquals(403,error.status); assertEquals("HTTP 403",error.message) }
         }
     }
     @Test fun emptyProviderResultsLeavePlainEta() = runBlocking {
         assertNull(TomTomTraffic(client(body="""{"routes":[]}""")).etaWithTraffic(points))
-        assertNull(GoogleTraffic(client(body="""{"routes":[]}""")).etaWithTraffic(points))
     }
     @Test fun deadlineCancelsLateProvider() = runBlocking {
-        val provider = GoogleTraffic(client(body="""{"routes":[{"duration":"1140s"}]}""") { Thread.sleep(3200) })
+        val provider = TomTomTraffic(client(body="""{"routes":[{"summary":{"travelTimeInSeconds":1140}}]}""") { Thread.sleep(3200) })
         val start = System.nanoTime()
         assertNull(withTimeoutOrNull(3000) { provider.etaWithTraffic(points) })
         assertTrue((System.nanoTime()-start)/1_000_000 < 3150)
+    }
+    @Test fun retiredGoogleSettingsAreRejected() {
+        for (change in listOf("trafficProvider" to "google", "googleMapsKey" to "retired-fixture")) {
+            try { Settings.set(change.first, change.second); fail("retired setting accepted") }
+            catch (_: IllegalArgumentException) { }
+        }
     }
     @Test fun freshnessBoundaryAndDisplay() {
         val eta = TrafficEta(Duration.ofSeconds(1140), "tomtom", 1000)

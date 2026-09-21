@@ -125,6 +125,8 @@ fun StatusStrip(modifier: Modifier = Modifier) {
     ) {
         Text(clock, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.weight(1f))
+        val router by com.morton.trucknav.settings.Settings.flow("valhallaUrl").collectAsState()
+        if (router.isNullOrBlank()) Text("Routing: On-device only", color = Color(0xFFcfd8e3), fontSize = 13.sp)
         Field(if (ssid != null) Icons.Filled.Wifi else Icons.Filled.WifiOff, ssid ?: "no Wi-Fi", ssid != null)
         Field(Icons.Filled.Shield, if (vpn) "tailnet" else "no tailnet", vpn)
         Field(if (gpsOk) Icons.Filled.GpsFixed else Icons.Filled.GpsOff, gpsText, gpsOk)

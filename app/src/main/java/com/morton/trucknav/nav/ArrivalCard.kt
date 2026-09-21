@@ -38,8 +38,8 @@ fun ArrivalCard(arrived: Arrival, onDone: () -> Unit, modifier: Modifier = Modif
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("You have arrived", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            arrived.name?.let { Text(it, color = Color(0xFF9aa5b1), fontSize = 17.sp, maxLines = 1) }
+            Text(if (arrived.next != null) "Arrived at " + arrived.name else "You have arrived", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            (arrived.next?.let { "Continuing to " + it } ?: arrived.name)?.let { Text(it, color = Color(0xFF9aa5b1), fontSize = 24.sp, maxLines = 1) }
         }
         Spacer(Modifier.width(12.dp))
         Box(

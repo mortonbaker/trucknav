@@ -246,20 +246,19 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       views =
           NavigationViewComponentBuilder.Default()
               .withInstructionsView { modifier, state ->
-                com.morton.trucknav.routingui.RoutingInstructions(
-                    modifier.padding(end = if (landscape) 0.dp else 84.dp)
-                        .semantics { contentDescription = "Turn instructions" }, state, routeSource)
-              }
-              .withProgressView { modifier, state, onExit ->
-                state.progress?.let { progress ->
-                  com.stadiamaps.ferrostar.composeui.views.components.TripProgressView(
-                      modifier = modifier.padding(end = if (landscape) 0.dp else 84.dp)
-                          .semantics { contentDescription = "Trip progress" },
-                      theme = com.stadiamaps.ferrostar.composeui.theme.DefaultNavigationUITheme.tripProgressViewTheme,
-                      progress = progress,
-                      onTapExit = onExit,
-                  )
+                // S23: portrait keeps 84 dp clear on the right for the control stack. S19: arrival card replaces the turn card at a stop.
+                val m = modifier.padding(end = if (landscape) 0.dp else 84.dp).semantics { contentDescription = "Turn instructions" }
+                val arrival = sceneState.arrived
+                if (arrival?.next != null) {
+                  com.morton.trucknav.nav.ArrivalCard(arrival, viewModel::dismissArrival, m)
+                } else {
+                  com.morton.trucknav.routingui.RoutingInstructions(m, state, routeSource)
                 }
+              }
+              .withProgressView { modifier, state, onEnd ->
+                com.morton.trucknav.nav.TripBar(
+                    modifier.padding(end = if (landscape) 0.dp else 84.dp).semantics { contentDescription = "Trip progress" },
+                    state, viewModel, onEnd ?: viewModel::stopNavigation)
               }
               .withRoadNameView { modifier, roadName, _ ->
                 if (navigationMapState.isTrackingUser) roadName?.let { name ->
@@ -308,6 +307,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
           ),
   ) { ui ->
     com.morton.trucknav.traffic.TrafficLayer()
+    com.morton.trucknav.nav.StopPins(if (ui.isNavigating()) sceneState.tripStops else emptyList())
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
     com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected) { viewModel.selectPreview(it) }

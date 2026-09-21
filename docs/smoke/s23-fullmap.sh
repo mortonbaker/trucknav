@@ -10,7 +10,7 @@ UI=$HOME/bin/ui.sh
 contract
 require "emulator network VALIDATED (ICMP is not forwarded on every host)" sh -c "adb -s $S shell dumpsys connectivity | grep -q VALIDATED"
 adb -s $S emu geo fix -97.204973 33.080088 >/dev/null 2>&1
-app_restart 10; $UI $S tapx "Got it" >/dev/null 2>&1
+app_restart 10; $UI $S tapx "Got it" >/dev/null 2>&1; $UI $S tapx "Continue to map" >/dev/null 2>&1
 
 # pixel probes (landscape 1340x800): rail column x<116, side pane x>800 when a pane is open
 px() { python3 - "$EVID/$1" $2 $3 <<'EOF'

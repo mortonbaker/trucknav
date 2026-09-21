@@ -51,11 +51,14 @@ data class DemoNavigationSceneState(
     val arrived: Arrival? = null,
     val addingStop: Boolean = false,      // search box open on top of the navigating layout
     val stops: List<String> = emptyList(), // names of stops still ahead (for the strip on the card)
+    val tripStops: List<com.morton.trucknav.nav.TripStop> = emptyList(),
+    val tripRevision: Int = 0,
+    val stopsUpdating: Boolean = false,
     val recenter: Int = 0,                 // bumped when the scene should snap the camera back to the puck
 )
 
 // Shown at the end of a trip; navigation ends ARRIVAL_LINGER_MS later or on Done.
-data class Arrival(val name: String?, val atMs: Long)
+data class Arrival(val name: String?, val atMs: Long, val next: String? = null)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DemoNavigationViewModel(
@@ -115,41 +118,69 @@ class DemoNavigationViewModel(
   // then end the trip like Android Auto does.
   private var destinationName: String? = null
   private var finalDestination: GeographicCoordinate? = null
-  // Add a stop (S17.11): route now -> stop -> original destination, replacing the
-  // current route. Waypoints ride along in TripState.remainingWaypoints, so a
-  // reroute after this keeps the stop. A stop is a via point: passing within
-  // 100 m of it advances to the next leg (no pause, no card).
+  // Ordered intermediate stops. New selections become NEXT; waypoint-count drops
+  // advance the trip without replacing the route or ending navigation.
   private var stopsAhead: List<Pair<String, GeographicCoordinate>> = emptyList()
-  private fun near(a: GeographicCoordinate, b: GeographicCoordinate): Boolean {
-    val r = FloatArray(1); android.location.Location.distanceBetween(a.lat, a.lng, b.lat, b.lng, r); return r[0] < 300f
-  }
   fun setAddingStop(on: Boolean) { val s = _sceneState.value; _sceneState.value = s.copy(addingStop = on, searchResults = if (on) s.searchResults else emptyList(), recenter = if (on) s.recenter else s.recenter + 1) }
+  private var stopEdit = 0
+  private var stopJob: kotlinx.coroutines.Job? = null
+  private fun publishStops(replaced: Boolean = false) {
+    AppModule.voiceGate.intermediateArrival = stopsAhead.isNotEmpty()
+    _sceneState.value = _sceneState.value.copy(
+        stops = stopsAhead.map { it.first },
+        tripStops = stopsAhead.map { com.morton.trucknav.nav.TripStop(it.first, it.second) } +
+            listOfNotNull(finalDestination?.let { com.morton.trucknav.nav.TripStop(destinationName ?: "Destination", it) }),
+        tripRevision = _sceneState.value.tripRevision + if (replaced) 1 else 0,
+    )
+  }
   fun addStop(stop: GeographicCoordinate, name: String) {
-    val dest = finalDestination ?: return
-    val gen = navGeneration
     setAddingStop(false)
-    com.morton.trucknav.nav.NavLog.log("stop-add", "gen=$gen \"$name\" $stop before ${destinationName}")
-    viewModelScope.launch {
+    editStops(listOf(name to stop) + stopsAhead, "stop-add")
+  }
+  fun removeStop(stop: com.morton.trucknav.nav.TripStop) {
+    val index = stopsAhead.indexOfFirst { it.first == stop.name && it.second == stop.coordinate }
+    if (index < 0) return
+    editStops(stopsAhead.filterIndexed { i, _ -> i != index }, "stop-remove")
+  }
+  private fun editStops(desired: List<Pair<String, GeographicCoordinate>>, reason: String) {
+    val dest = finalDestination ?: return
+    if (!navigationUiState.value.isNavigating()) return
+    val gen = navGeneration
+    val edit = ++stopEdit
+    val original = stopsAhead
+    stopJob?.cancel()
+    _sceneState.value = _sceneState.value.copy(stopsUpdating = true)
+    _routeError.value = null
+    stopJob = viewModelScope.launch {
       try {
         val here = navigationUiState.value.location ?: location.value
             ?: throw com.morton.trucknav.routing.RoutingUnavailable("Waiting for a GPS location.")
-        val remaining = (ferrostarCore.state.value.tripState as? uniffi.ferrostar.TripState.Navigating)?.remainingWaypoints
-            ?.filter { w -> stopsAhead.any { near(it.second, w.coordinate) } } ?: emptyList()   // Valhalla snaps waypoints; match by distance
-        val waypoints = listOf(Waypoint(coordinate = stop, kind = WaypointKind.BREAK)) + remaining + listOf(Waypoint(coordinate = dest, kind = WaypointKind.BREAK))
+        val waypoints = (desired.map { it.second } + dest).map { Waypoint(coordinate = it, kind = WaypointKind.BREAK) }
         val route = ferrostarCore.getRoutes(here, waypoints).firstOrNull()
-            ?: throw com.morton.trucknav.routing.RoutingUnavailable("No route through that stop.")
-        if (gen != navGeneration || !navigationUiState.value.isNavigating()) return@launch
-        stopsAhead = listOf(name to stop) + stopsAhead.filter { s -> remaining.any { near(it.coordinate, s.second) } }
-        com.morton.trucknav.nav.NavLog.route("stop-add gen=$gen", route)
+            ?: throw com.morton.trucknav.routing.RoutingUnavailable("No route through those stops.")
+        if (gen != navGeneration || edit != stopEdit || !navigationUiState.value.isNavigating()) return@launch
+        if (stopsAhead != original) throw com.morton.trucknav.routing.RoutingUnavailable("Trip advanced. Try editing the stops again.")
+        stopsAhead = desired
+        com.morton.trucknav.nav.NavLog.route(reason + " gen=" + gen, route)
         com.morton.trucknav.nav.NavLock.sync { ferrostarCore.replaceRoute(route) }
         acceptRouteSource(route)
-        _sceneState.value = _sceneState.value.copy(stops = stopsAhead.map { it.first }, recenter = _sceneState.value.recenter + 1)
+        publishStops(replaced = true)
+        _sceneState.value = _sceneState.value.copy(recenter = _sceneState.value.recenter + 1)
       } catch (e: kotlinx.coroutines.CancellationException) { throw e
       } catch (e: Exception) {
-        _routeError.value = (e as? com.morton.trucknav.routing.RoutingUnavailable)?.message ?: "Could not route through that stop."
-        com.morton.trucknav.nav.NavLog.log("stop-add", "gen=$gen failed ${e.javaClass.simpleName}: ${e.message}")
+        _routeError.value = (e as? com.morton.trucknav.routing.RoutingUnavailable)?.message ?: "Could not update stops."
+        com.morton.trucknav.nav.NavLog.log(reason, "failed " + e.javaClass.simpleName)
+      } finally {
+        if (edit == stopEdit) _sceneState.value = _sceneState.value.copy(stopsUpdating = false)
       }
     }
+  }
+  private fun onStopArrived(name: String) {
+    val next = stopsAhead.firstOrNull()?.first ?: destinationName ?: "Destination"
+    _sceneState.value = _sceneState.value.copy(arrived = Arrival(name, System.currentTimeMillis(), next))
+    AppModule.voiceGate.sayStopArrival(name, next)
+    arrivalJob?.cancel()
+    arrivalJob = viewModelScope.launch { kotlinx.coroutines.delay(ARRIVAL_LINGER_MS); dismissArrival() }
   }
   private var arrivalJob: kotlinx.coroutines.Job? = null
   private fun onArrived() {
@@ -173,7 +204,12 @@ class DemoNavigationViewModel(
       ferrostarCore.state.map { (it.tripState as? uniffi.ferrostar.TripState.Navigating)?.remainingWaypoints?.size }.distinctUntilChanged().collect { n ->
         if (n != null && stopsAhead.isNotEmpty() && n <= stopsAhead.size) {
           val passed = stopsAhead.take(stopsAhead.size - (n - 1).coerceAtLeast(0))
-          if (passed.isNotEmpty()) { com.morton.trucknav.nav.NavLog.log("stop-passed", passed.joinToString { it.first }); stopsAhead = stopsAhead.drop(passed.size); _sceneState.value = _sceneState.value.copy(stops = stopsAhead.map { it.first }) }
+          if (passed.isNotEmpty()) {
+            com.morton.trucknav.nav.NavLog.log("stop-passed", passed.joinToString { it.first })
+            stopsAhead = stopsAhead.drop(passed.size)
+            publishStops()
+            passed.forEach { onStopArrived(it.first) }
+          }
         }
       }
     }
@@ -296,6 +332,7 @@ class DemoNavigationViewModel(
     destinationName = name; finalDestination = destination; stopsAhead = emptyList(); AppModule.voiceGate.lastClass = null
     com.morton.trucknav.nav.NavLock.sync { if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route) }
     acceptRouteSource(route)
+    publishStops(replaced = true)
   }
 
   override fun toggleMute() {
@@ -347,6 +384,7 @@ class DemoNavigationViewModel(
         destinationName = name; finalDestination = destination; stopsAhead = emptyList(); AppModule.voiceGate.lastClass = null
         com.morton.trucknav.nav.NavLock.sync { if (navigationUiState.value.isNavigating()) ferrostarCore.replaceRoute(route) else ferrostarCore.startNavigation(route) }
         acceptRouteSource(route)
+        publishStops(replaced = true)
       } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -361,12 +399,16 @@ class DemoNavigationViewModel(
 
   override fun stopNavigation() {
     navGeneration++
+    stopEdit++; stopJob?.cancel(); arrivalJob?.cancel()
+    finalDestination = null; destinationName = null
+    AppModule.voiceGate.intermediateArrival = false
+    com.morton.trucknav.traffic.Traffic.setRemainingRoute(emptyList())
     routeJob?.cancel()
     _routeSource.value = null
     _routeError.value = null
     com.morton.trucknav.nav.NavLog.log("stop", "gen=$navGeneration caller=${com.morton.trucknav.nav.NavLog.caller()}")
     locationProvider.disableSimulation()
-    stopsAhead = emptyList(); _sceneState.value = _sceneState.value.copy(addingStop = false, stops = emptyList())
+    stopsAhead = emptyList(); _sceneState.value = _sceneState.value.copy(addingStop = false, stops = emptyList(), tripStops = emptyList(), arrived = null, stopsUpdating = false)
     com.morton.trucknav.nav.NavLock.sync { ferrostarCore.stopNavigation() }
   }
 
