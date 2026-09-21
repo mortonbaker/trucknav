@@ -47,7 +47,7 @@ class SaneLocationProvider(private val inner: NavigationLocationProviding) : Nav
 
         fun accept(l: Location): Boolean {
             val why = plausible(l)
-            if (why == null) { lastGood = l; candidate = null; candidateRun = 0; NightMode.position = l.latitude to l.longitude; if (_rejecting.value) _rejecting.value = false; return true }
+            if (why == null) { com.morton.trucknav.settings.InitialPosition.remember(l); lastGood = l; candidate = null; candidateRun = 0; NightMode.position = l.latitude to l.longitude; if (_rejecting.value) _rejecting.value = false; return true }
             if (why.startsWith("jump")) {
                 val c = candidate
                 val consistent = c != null && run { val dt = (l.elapsedRealtimeNanos - c.elapsedRealtimeNanos) / 1_000_000; dt in 1..STALE_MS && c.distanceTo(l) / 1000.0 / (dt / 3_600_000.0) <= MAX_JUMP_KMH }
@@ -56,7 +56,7 @@ class SaneLocationProvider(private val inner: NavigationLocationProviding) : Nav
                 candidate = l
                 if (candidateRun >= 3 && (l.elapsedRealtimeNanos - candidateStart) / 1_000_000_000 >= 10) {
                     NavLog.log("gps", "re-anchored after $candidateRun consistent fixes @${"%.5f".format(l.latitude)},${"%.5f".format(l.longitude)}")
-                    lastGood = l; candidate = null; candidateRun = 0; _rejecting.value = false; return true
+                    com.morton.trucknav.settings.InitialPosition.remember(l); lastGood = l; candidate = null; candidateRun = 0; _rejecting.value = false; return true
                 }
             }
             NavLog.log("gps", "rejected: $why @${"%.5f".format(l.latitude)},${"%.5f".format(l.longitude)} sats=${l.extras?.getInt("satellites") ?: -1}")

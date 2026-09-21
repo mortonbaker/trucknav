@@ -11,20 +11,17 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         minSdk 29
         targetSdk 36
-        versionCode 133
-        versionName "0.34.0"
+        versionCode 135
+        versionName "0.35.0"
         vectorDrawables { useSupportLibrary true }
         Properties properties = new Properties()
         def lp = project.rootProject.file("local.properties")
         if (lp.exists()) properties.load(lp.newDataInputStream())
-        buildConfigField "String", "valhallaUrl", "\"${properties.getProperty("valhallaUrl", "https://valhalla1.openstreetmap.de/route")}\""
+        buildConfigField "String", "valhallaUrl", "\"${properties.getProperty("valhallaUrl", "")}\""
         buildConfigField "String", "styleUrl", "\"${properties.getProperty("styleUrl", "https://demotiles.maplibre.org/style.json")}\""
         buildConfigField "String", "apiToken", "\"${properties.getProperty("apiToken", "")}\""
         buildConfigField "String", "venusHost", "\"${properties.getProperty("venusHost", "")}\""
-        // fallback map position before the first GPS fix; set homeLat/homeLng in local.properties
-        buildConfigField "double", "homeLat", "${properties.getProperty("homeLat", "33.2148")}"
-        buildConfigField "double", "homeLng", "${properties.getProperty("homeLng", "-97.1331")}"
-        buildConfigField "String", "venusPortalId", "\"${properties.getProperty("venusPortalId", "2ccf67855c49")}\""
+        buildConfigField "String", "venusPortalId", "\"${properties.getProperty("venusPortalId", "")}\""
         buildConfigField "String", "absUrl", "\"${properties.getProperty("absUrl", "")}\""
         buildConfigField "String", "absUser", "\"${properties.getProperty("absUser", "")}\""
         buildConfigField "String", "absPass", "\"${properties.getProperty("absPass", "")}\""
@@ -64,6 +61,7 @@ android {
 
 dependencies {
     implementation project(":routing")
+    implementation "com.google.zxing:core:3.5.3"
     androidTestImplementation "androidx.test:runner:1.7.0"
     androidTestImplementation libs.androidx.test.junit
     coreLibraryDesugaring libs.desugar.jdk.libs

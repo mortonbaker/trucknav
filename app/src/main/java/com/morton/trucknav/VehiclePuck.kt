@@ -3,6 +3,9 @@ package com.morton.trucknav
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +78,8 @@ fun VehiclePuck(uiState: NavigationUiState) {
         GeoJsonData.Features(FeatureCollection(Feature(geometry = Point(dLng, dLat), properties = buildJsonObject { put("bearing", bearing) }))),
         options = GeoJsonOptions(synchronousUpdate = true),
     )
-    val painter = painterResource(R.drawable.vehicle_top)
+    val custom by com.morton.trucknav.settings.VehicleImage.bitmap.collectAsState()
+    val painter = custom?.let { remember(it) { BitmapPainter(it.asImageBitmap()) } } ?: painterResource(R.drawable.vehicle_top)
     SymbolLayer(
         id = "trucknav-vehicle-puck",
         source = source,
