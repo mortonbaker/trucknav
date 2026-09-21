@@ -41,7 +41,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S19 | Trip bar + stops (Google/Tesla) | M | NEXT (nav track) | — |
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
 | S21 | Search along route | M | NEW (operator 2026-09-20) | — |
-| S22 | Traffic | M + key | NEW (operator 2026-09-20) | — |
+| S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
@@ -98,8 +98,8 @@ What Google does: while navigating, "Search along route" with category chips (ga
 Build: chips in the add-stop box while navigating; Photon has no corridor search, so sample the *remaining* route every ~10 km, query Photon with `lat/lon` bias (+ `osm_tag` for the category) per sample, dedupe, keep hits ≤ 2 mi from the route, rank by detour = matrix(now→hit) + matrix(hit→next waypoint) − matrix(now→next waypoint) via Valhalla `sources_to_targets`; letters A–F, "+N min" on each; pick → `addStop`. Free text works the same way (bias along the corridor instead of at the puck).
 Done when (emulator, `docs/emu-along.sh`): (a) on the home → Whole Foods route, chip "Gas" returns ≥ 3 hits all within 2 mi of the route (distance-to-polyline logged) in < 4 s; (b) each row shows "+N min" and N equals the matrix detour ±1 min; (c) picking B → `route stop-add` with B as the next stop, trip continues; (d) free text "Kroger" while navigating returns hits sorted by detour, not by distance from the puck; (e) offline (server down) → chips disabled with a reason in the strip, no crash.
 
-### S22 — Traffic: TomTom + Google (medium + keys) — NEW, Astra
-Operator decision 2026-09-20: build **both** integrations; keys are entered in the Settings screen, or through the API/MCP (`PUT /api/settings {"tomtomKey": "…"}`, `set_setting("googleMapsKey", …)`), never in source or `local.properties`.
+### S22 — Traffic: TomTom only (medium + key) — Astra; foundation merged 0.33.0
+Operator decision 2026-09-20 19:50: **TomTom only. Google dropped** (Google Maps Platform terms forbid using its data on a non-Google map; Astra flagged it, operator agreed). Remove the Google provider, its fixtures and the Settings option in the next S22 commit. Keys are BYOK: keys are entered in the Settings screen, or through the API/MCP (`PUT /api/settings {"tomtomKey": "…"}`, `set_setting("googleMapsKey", …)`), never in source or `local.properties`.
 Facts (checked 2026-09-20): self-hosted Valhalla has no live traffic. TomTom: Traffic Flow raster/vector tiles + Routing API, free allowance covers one truck (50 k tile requests/day per [pricing](https://docs.tomtom.com/pricing); [flow tiles](https://developer.tomtom.com/traffic-api/documentation/traffic-flow/raster-flow-tiles)). Google Routes `TRAFFIC_AWARE` is a Pro SKU: 5,000 free/month then $15/1000 ([billing](https://developers.google.com/maps/documentation/routes/usage-and-billing)).
 Build (all online-only, silent when offline or keyless):
 1. `traffic/TrafficProvider` interface: `flowTileUrl(z,x,y)`, `etaWithTraffic(polyline|origin,dest): Duration?`, `incidents(bbox)`; implementations `TomTomTraffic`, `GoogleTraffic`; the active one is a setting (`trafficProvider = tomtom|google|off`).
