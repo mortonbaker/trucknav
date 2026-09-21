@@ -494,3 +494,16 @@ changes by S20. `docs/emu-settings.sh` now invokes the same passing six-test UI/
 suite after its API/MCP checks, so the repeatable acceptance entrypoint includes
 the on-screen controls and QR proof. Its component commands were run above; the
 combined wrapper was syntax-checked after wiring them together.
+
+### 2026-09-20 — 0.35.0 / 135 merge of settings-s20 (claude-nav, build01 emulator-5558)
+
+Vehicle track (Codex): S20 usable by others — Settings pane (Places/Vehicle/Servers/Units/Voice/API/About), runtime settings.json, no hardcoded home, PUT/GET/DELETE /api/vehicle + MCP upload_vehicle/set_home/set_work, first-run setup card with token QR (once per install), RUNBOOK setup. Merge fixes: pane uses traffic.TrafficSettings() (Google fields dropped), TomTom-only validation kept with S20 checks, harnesses dismiss the setup card.
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s20b/, ~/evidence/s23-fullmap-merge-s20b/
+
