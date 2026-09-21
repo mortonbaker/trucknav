@@ -1,0 +1,178 @@
+package com.morton.trucknav.settings
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.ByteArrayOutputStream
+import java.io.File
+
+@RunWith(AndroidJUnit4::class)
+class S20SettingsTest {
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+
+    @Test fun persistenceFlowAndAtomicValidation() {
+        Settings.init(context)
+        val key = "s20Acceptance"
+        val original = Settings.get(key)
+        val provider = Settings.get("trafficProvider")
+        try {
+            val flow = Settings.flow(key)
+            Settings.set(key, "Dépôt 東京")
+            assertEquals("Dépôt 東京", flow.value)
+            assertEquals("Dépôt 東京", JSONObject(File(context.filesDir, "settings.json").readText()).getString(key))
+            try {
+                Settings.update(mapOf(key to "must not persist", "trafficProvider" to "invalid"))
+                fail("Invalid settings batch accepted")
+            } catch (_: IllegalArgumentException) { }
+            assertEquals("Dépôt 東京", Settings.get(key))
+            assertEquals(provider, Settings.get("trafficProvider"))
+            Settings.set(key, null)
+            assertNull(flow.value)
+            assertFalse(JSONObject(File(context.filesDir, "settings.json").readText()).has(key))
+        } finally { Settings.set(key, original) }
+    }
+
+    @Test fun secretMaskingIncludesShortSecrets() {
+        Settings.init(context)
+        val original = Settings.get("s20AcceptanceKey")
+        try {
+            Settings.set("s20AcceptanceKey", "fixture-secret-1234")
+            assertEquals("••••1234", Settings.snapshot()["s20AcceptanceKey"])
+            Settings.set("s20AcceptanceKey", "1234")
+            assertEquals("••••", Settings.snapshot()["s20AcceptanceKey"])
+        } finally { Settings.set("s20AcceptanceKey", original) }
+    }
+
+    @Test fun imageFitAndRejectedUploadPreservesImage() {
+        VehicleImage.init(context)
+        val original = VehicleImage.bytes()
+        try {
+            val input = Bitmap.createBitmap(512, 256, Bitmap.Config.ARGB_8888)
+            input.eraseColor(android.graphics.Color.MAGENTA)
+            val png = ByteArrayOutputStream().also { input.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+            VehicleImage.put(png)
+            val saved = VehicleImage.bytes()!!
+            val image = BitmapFactory.decodeByteArray(saved, 0, saved.size)
+            assertEquals(256, image.width)
+            assertEquals(256, image.height)
+            assertEquals(0, android.graphics.Color.alpha(image.getPixel(0, 0)))
+            assertEquals(android.graphics.Color.MAGENTA, image.getPixel(128, 128))
+            for (bad in listOf(byteArrayOf(1, 2, 3), ByteArray(VehicleImage.MAX_BYTES + 1))) {
+                try { VehicleImage.put(bad); fail("Bad image accepted") } catch (_: IllegalArgumentException) { }
+                assertArrayEquals(saved, VehicleImage.bytes())
+            }
+            VehicleImage.delete()
+            assertNull(VehicleImage.bitmap.value)
+            assertNull(VehicleImage.bytes())
+        } finally { if (original != null) VehicleImage.put(original) else VehicleImage.delete() }
+    }
+
+    @Test fun initialPositionUsesLastFixThenExtractCentre() {
+        val prefs = context.getSharedPreferences("last_fix", android.content.Context.MODE_PRIVATE)
+        val oldLat = prefs.getString("lat", null); val oldLng = prefs.getString("lng", null)
+        val fixture = File(context.getExternalFilesDir(null), "000-s20-fixture.pmtiles")
+        check(!fixture.exists())
+        try {
+            val header = java.nio.ByteBuffer.allocate(127).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            header.put("PMTiles".toByteArray()); header.put(3.toByte())
+            header.putInt(119, -1050000000); header.putInt(123, 400000000)
+            fixture.writeBytes(header.array())
+            prefs.edit().remove("lat").remove("lng").commit()
+            InitialPosition.init(context)
+            assertEquals(40.0, InitialPosition.coordinate.lat, 0.000001)
+            assertEquals(-105.0, InitialPosition.coordinate.lng, 0.000001)
+            prefs.edit().putString("lat", "41.25").putString("lng", "-104.75").commit()
+            InitialPosition.init(context)
+            assertEquals(41.25, InitialPosition.coordinate.lat, 0.000001)
+            assertEquals(-104.75, InitialPosition.coordinate.lng, 0.000001)
+        } finally {
+            fixture.delete()
+            prefs.edit().putString("lat", oldLat).putString("lng", oldLng).commit()
+            InitialPosition.init(context)
+        }
+    }
+
+    @Test fun settingsPaneAndQrControls() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        context.startActivity(android.content.Intent(context, com.morton.trucknav.MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        fun find(node: android.view.accessibility.AccessibilityNodeInfo?, label: String, description: Boolean): android.view.accessibility.AccessibilityNodeInfo? {
+            if (node == null) return null
+            if ((if (description) node.contentDescription?.toString() else node.text?.toString()) == label) return node
+            for (i in 0 until node.childCount) find(node.getChild(i), label, description)?.let { return it }
+            return null
+        }
+        fun lookup(label: String) = find(instrumentation.uiAutomation.rootInActiveWindow, label, true) ?: find(instrumentation.uiAutomation.rootInActiveWindow, label, false)
+        fun wait(label: String): android.view.accessibility.AccessibilityNodeInfo {
+            repeat(60) { lookup(label)?.let { return it }; android.os.SystemClock.sleep(100) }
+            error("Control missing: " + label)
+        }
+        fun tap(label: String) {
+            var node = wait(label)
+            while (!node.isClickable && node.parent != null) node = node.parent
+            check(node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) { "Cannot click " + label }
+            instrumentation.waitForIdleSync()
+            android.os.SystemClock.sleep(250)
+        }
+        android.os.SystemClock.sleep(2000)
+        lookup("Continue to map")?.let { tap("Continue to map") }
+        lookup("Got it")?.let { tap("Got it") }
+        tap("Settings")
+        wait("Places")
+        val unitsBefore = Settings.get("units")
+        val nightBefore = Settings.get("autoNight")
+        val tokenBefore = Settings.get("apiToken")
+        try {
+            fun section(label: String) {
+                repeat(5) {
+                    if (lookup(label) != null) { tap(label); return }
+                    wait("Settings sections").performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                    android.os.SystemClock.sleep(200)
+                }
+                error("Section missing: " + label)
+            }
+            section("Units")
+            tap("metric")
+            assertEquals("metric", Settings.get("units"))
+            section("Voice")
+            val before = Settings.get("autoNight") != "false"
+            tap("Auto night")
+            assertEquals(!before, Settings.get("autoNight") != "false")
+            section("API")
+            tap("Show token and QR")
+            wait("API token QR").performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
+            android.os.SystemClock.sleep(300)
+            val rect = android.graphics.Rect()
+            wait("API token QR").getBoundsInScreen(rect)
+            val screen = instrumentation.uiAutomation.takeScreenshot()!!
+            val qr = Bitmap.createBitmap(screen, rect.left, rect.top, rect.width(), rect.height())
+            val pixels = IntArray(qr.width * qr.height)
+            qr.getPixels(pixels, 0, qr.width, 0, 0, qr.width, qr.height)
+            val luminance = com.google.zxing.RGBLuminanceSource(qr.width, qr.height, pixels)
+            val decoded = com.google.zxing.MultiFormatReader().decode(com.google.zxing.BinaryBitmap(com.google.zxing.common.HybridBinarizer(luminance))).text
+            assertTrue("QR encodes current token", decoded == Settings.get("apiToken"))
+            section("About")
+            wait("Export navigation logs")
+        } finally {
+            Settings.set("units", unitsBefore); Settings.set("autoNight", nightBefore)
+            Settings.set("apiToken", tokenBefore)
+            lookup("Map")?.let { tap("Map") }
+        }
+    }
+
+    @Test fun tokenEntropyAndUnitFormatting() {
+        val tokens = List(64) { Configuration.newToken() }
+        assertEquals(64, tokens.toSet().size)
+        assertTrue(tokens.all { it.matches(Regex("[0-9a-f]{64}")) })
+        Settings.init(context)
+        val before = Settings.get("units")
+        try {
+            Settings.set("units", "imperial"); assertTrue(Units.distance(1609.344).endsWith(" mi"))
+            Settings.set("units", "metric"); assertTrue(Units.distance(1000.0).endsWith(" km"))
+        } finally { Settings.set("units", before) }
+    }
+}

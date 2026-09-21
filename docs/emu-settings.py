@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import time
 import urllib.error
@@ -75,6 +76,13 @@ try:
     checks = ["valhallaUrl","photonUrl","styleUrl","absUrl","venusHost","relayHost","units","voiceDisabled","autoNight","apiToken"]
     snapshot=request("GET","/api/settings")
     record("a settings", "All pane settings readable; token generated or migrated", f"{sum(k in snapshot for k in checks)}/{len(checks)} fields; token {len(TOKEN)} chars", all(k in snapshot for k in checks) and len(TOKEN)>=32)
+    old_token = TOKEN
+    replacement_token = secrets.token_hex(32)
+    request("PUT","/api/settings",{"apiToken":replacement_token})
+    TOKEN = replacement_token
+    try: request("GET","/api/settings",token=old_token); revoked = False
+    except urllib.error.HTTPError as err: revoked = err.code == 401
+    record("token rotation","Old token rejected immediately; new token accepted",revoked,revoked and bool(request("GET","/api/settings")))
     request("PUT","/api/settings",{"tomtomKey":"s20-disposable-test-9876","trafficProvider":"off"})
     masked=request("GET","/api/settings")["tomtomKey"]
     record("secrets","Only last 4, no plaintext in response",masked,masked=="••••9876")
@@ -130,6 +138,7 @@ finally:
     restore={key:saved.get(key) for key in current}
     restore.update(saved)
     request("PUT","/api/settings",restore)
+    TOKEN = saved["apiToken"]
     for kind in ("home","work"):
         old=next((p for p in original_places if p["kind"]==kind),None)
         if old: request("PUT","/api/favorites/"+kind,{"lat":old["lat"],"lng":old["lng"],"name":old["name"]})

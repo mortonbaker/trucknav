@@ -68,7 +68,7 @@ fun SettingsPane(modifier: Modifier = Modifier, onChooseMap: (String) -> Unit = 
                         Action("Restore default vehicle") { VehicleImage.delete() }
                     }
                     "Servers" -> {
-                        Text("Changes apply to the next connection or request.", fontSize = 24.sp)
+                        Text("Changes apply to new connections. Restart TruckNav after changing Valhalla to refresh route previews.", fontSize = 24.sp)
                         listOf("valhallaUrl" to "Valhalla URL (blank = on-device only)", "photonUrl" to "Photon URL",
                             "styleUrl" to "Map style URL", "absUrl" to "Audiobookshelf URL", "absUser" to "Audiobookshelf username",
                             "absPass" to "Audiobookshelf password", "venusHost" to "Venus MQTT host",
@@ -83,6 +83,7 @@ fun SettingsPane(modifier: Modifier = Modifier, onChooseMap: (String) -> Unit = 
                     "Units" -> {
                         Text("Distance units", fontSize = 24.sp)
                         Choice("units", listOf("imperial", "metric"))
+                        Text("Search distances follow this choice. Route preview and trip displays currently use miles.", fontSize = 20.sp)
                     }
                     "Voice" -> {
                         val disabled by NavPrefs.disabledClasses.collectAsState()

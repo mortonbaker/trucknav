@@ -73,14 +73,14 @@ object Favorites {
         NavLog.log("favorites", "saved $kind \"$name\" ${c.lat},${c.lng}")
         return f
     }
-    fun remove(id: String) { if (id == HOME || id == WORK) com.morton.trucknav.settings.Settings.set("place." + id, null); _all.value = _all.value.filter { it.id != id }; persist(); NavLog.log("favorites", "removed $id") }
+    @Synchronized fun remove(id: String) { if (id == HOME || id == WORK) com.morton.trucknav.settings.Settings.set("place." + id, null); _all.value = _all.value.filter { it.id != id }; persist(); NavLog.log("favorites", "removed $id") }
 
-    fun noteDestination(name: String?, c: GeographicCoordinate) {
+    @Synchronized fun noteDestination(name: String?, c: GeographicCoordinate) {
         val label = name?.takeIf { it.isNotBlank() } ?: "%.4f, %.4f".format(c.lat, c.lng)
         _recent.value = (listOf(Recent(label, c.lat, c.lng, System.currentTimeMillis())) + _recent.value.filter { it.name != label }).take(10)
         persistRecent()
     }
-    fun forgetRecent(name: String) { _recent.value = _recent.value.filter { it.name != name }; persistRecent(); NavLog.log("favorites", "forgot recent \"$name\"") }
+    @Synchronized fun forgetRecent(name: String) { _recent.value = _recent.value.filter { it.name != name }; persistRecent(); NavLog.log("favorites", "forgot recent \"$name\"") }
     private fun persistRecent() { runCatching { recentFile.writeText(json.encodeToString(JsonArray.serializer(), buildJsonArray { _recent.value.forEach { add(recToJson(it)) } })) } }
 
     private fun persist() {

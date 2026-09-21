@@ -304,3 +304,21 @@ Separate merge 05f6151 (contract 4ad1978). Main debug build passed. Emulator-555
 | crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
 
 Run1 had two harness false-fails (probe hit the Recents panel; "Speed" text is "Speed  1.0×") and one environmental fail (emulator Wi-Fi was off at 18:43 — someone else toggled it; the harness now requires photon reachable before it starts).
+
+## S20 continuation — 2026-09-20, settings-s20 (acceptance pending)
+
+| Check | Measured | Status |
+|---|---|---|
+| Empty local.properties build | assembleDebug passed; generated apiToken and valhallaUrl empty | PASS (build only) |
+| Whole-app hardcoded-home scan | grep -r homeLat app/: exit 1, 0 bytes | PASS |
+| App and S20 instrumentation compilation | :app:assembleDebug and :app:assembleDebugAndroidTest passed | PASS (compilation only) |
+| Empty-build first-run token and fresh profile | APK archived at ~/evidence/s20-empty-build/app-empty.apk; runtime not yet exercised | NOT RUN |
+| Vehicle <=2 s / persistence / MCP Home | docs/emu-settings.sh prepared; 5554 held for another session's S9b soak | BLOCKED (device lease) |
+| Settings UI/QR and storage tests | S20SettingsTest compiled; not yet executed | NOT RUN |
+| Final main integration and tablet install | No tablet changes by this S20 session | NOT RUN |
+
+The broad assembleDebugAndroidTest target hit an existing :routing test AAR
+desugaring requirement; app-specific instrumentation compiles. This is not an S20
+runtime pass. The separate contract's earlier 13/13 receipt does not cover the
+remainder. Nav-owned preview/trip unit consumers and runtime preview adapter
+refresh are explicitly pending coordination.

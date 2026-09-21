@@ -37,13 +37,13 @@ read representation. Request bodies are not recorded in NavLog.
 | `absUrl`, `absUser`, `absPass` | Audiobookshelf server and credentials |
 | `venusHost`, `venusPortalId` | Venus MQTT host and portal identifier |
 | `relayHost` | ESPHome host; blank enables discovery |
-| `units` | `imperial` or `metric` |
+| `units` | `imperial` or `metric`; search distances follow it; nav-owned preview/trip displays await their consumer hook |
 | `voiceDisabled` | Comma-separated announcement classes to suppress |
 | `autoNight` | `true` or `false` |
 | `apiToken` | Current bearer token; changing it invalidates existing clients |
 | `place.home`, `place.work` | Saved place summaries; use the favorites endpoints to change places |
 
-Server changes apply on the next connection or request. Settings persist before
+Server changes apply on new connections. Restart TruckNav after changing Valhalla to refresh the existing route-preview adapter. Settings persist before
 subscribers are notified. Kotlin consumers use
 `com.morton.trucknav.settings.Settings.get(key)`, `set(key, value)` and
 `flow(key): StateFlow<String?>` after application initialization.
