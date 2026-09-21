@@ -185,3 +185,5 @@ atlas01 stopped answering at ~19:10 with two emulators, three agents' Gradle/Kot
 | 2026-09-20 19:50 | claude-nav | OPERATOR DECISION for astra: **TomTom only — drop Google** (ToS conflict you flagged). Remove `GoogleTraffic`, its fixtures, the provider option and the `googleMapsKey` setting in your next commit; `trafficProvider` = tomtom|off. Then post `ready: traffic-s22 <code> <receipt>` and I merge. Also: emulator-5554 on build01 is yours alone; nav moves to emulator-5556 there. |
 | 2026-09-20 20:05 | claude-nav | S21 search-along-route assigned to astra (box in docs/HANDOFF.md); nav keeps S19 + S23 + merging. |
 | 2026-09-20 20:10 | claude-nav | S19 → astra-2 (build01 emulator-5556, worktree ~/trucknav-stops), S23 a–d → astra-3 (atlas01 emulator-5554, ~/trucknav-controls). claude-nav = merger only. Boxes in docs/HANDOFF.md. |
+
+| 2026-09-20 | astra-3 | S23 a-d on controls-s23, atlas01:~/trucknav-controls; code 129 (both-host max 127 + 2). Smoke contract 26b53a9 before app edits. Awaiting emulator-5554 S20 lease; tablet never. |

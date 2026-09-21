@@ -18,7 +18,7 @@ require "device available" adb -s "$S" get-state
 docs/tablet-lock.sh "$S" acquire "$AGENT" 90 "S23 control geometry" || exit 2
 ROTATION=$(sh_ settings get system user_rotation | tr -d '\r')
 AUTO=$(sh_ settings get system accelerometer_rotation | tr -d '\r')
-FG=$(fg)
+FG=$(sh_ dumpsys activity activities | sed -n 's/.*topResumedActivity=.* u0 \([^ ]*\/[^ ]*\).*/\1/p' | head -1)
 cleanup() {
   sh_ settings put system user_rotation "$ROTATION" >/dev/null
   sh_ settings put system accelerometer_rotation "$AUTO" >/dev/null
@@ -53,18 +53,51 @@ def intersects(a,b): return a[0]<b[2] and b[0]<a[2] and a[1]<b[3] and b[1]<a[3]
 maps=[n for n in nodes if label(n)=='Showing a Map']
 assert maps,'map bounds missing'
 m=bounds(maps[0]); print('map',m,'density',density)
-names={'Map style','Add stop','Center on my location','Zoom in','Zoom out','Overview','Route overview','Mute','Unmute','Mute voice instructions','Unmute voice instructions'}
+names={'Map style','Add stop','Center on my location','Zoom in','Zoom out','Overview','Route Overview','Mute','Unmute','Mute voice instructions','Unmute voice instructions'}
 controls={label(n):bounds(touch(n)) for n in nodes if label(n) in names}
 assert controls,'no map controls'
 expected={'Map style','Center on my location','Zoom in','Zoom out'}
-if state in ('navigating','add-stop'): expected.add('Add stop')
+if state in ('navigating','add-stop'):
+    expected.update({'Add stop','Route Overview'})
+    if not ({'Mute','Unmute'} & controls.keys()): expected.add('Mute')
 errors_a=[]; errors_b=[]; errors_c=[]
 if not expected.issubset(controls): errors_a.append('missing '+str(expected-set(controls)))
+if len(controls)!=(7 if state in ('navigating','add-stop') else 4):
+    errors_a.append(('control count',len(controls)))
+if controls:
+    top=min(b[1] for b in controls.values()); bottom=max(b[3] for b in controls.values())
+    if abs((top-m[1])/density-16)>1.1: errors_a.append(('top corner',(top-m[1])/density))
+    if abs((m[3]-bottom)/density-16)>1.1: errors_a.append(('bottom corner',(m[3]-bottom)/density))
 obstacles=[]
 for n in nodes:
     s=label(n)
-    if s in {'S23 turn card','S23 progress bar','S23 search area','S23 destination sheet','S23 tiles','Search field'} or s.startswith(('Result:','Go:','Open:')):
-        obstacles.append((s,bounds(n)))
+    if s in {'Turn instructions','Trip progress','S23 search area','S23 destination sheet','S23 tiles','Search field','Set Home','Set Work','Open favorites','Open recents'} or s.startswith(('Result:','Go:','Open:')):
+        obstacles.append((s,bounds(touch(n)) if n.get('clickable')=='true' else bounds(n)))
+# Derive actual container rectangles, not only text/icon rectangles.
+def ancestor_rect(labels):
+    selected=[n for n in nodes if labels(label(n))]
+    if not selected:return None
+    chains=[]
+    for n in selected:
+        chain=[n]
+        while n in parent:n=parent[n];chain.append(n)
+        chains.append(chain)
+    common=next((n for n in chains[0] if all(n in chain for chain in chains[1:])),None)
+    return bounds(common) if common is not None and common.tag=='node' else None
+if state=='sheet':
+    rect=ancestor_rect(lambda s:s in ('Start navigation','Close') or s.startswith('Route '))
+    assert rect is not None and rect!=m,'destination-sheet rectangle unavailable'
+    obstacles.append(('destination sheet',rect))
+if state=='results':
+    rect=ancestor_rect(lambda s:s.startswith('Result:'))
+    assert rect is not None,'results-card rectangle unavailable'
+    obstacles.append(('results card',rect))
+if state in ('navigating','add-stop'):
+    assert any(s=='Turn instructions' for s,_ in obstacles),'turn-card rectangle unavailable'
+    assert any(s=='Trip progress' for s,_ in obstacles),'progress-bar rectangle unavailable'
+if state=='idle':
+    assert any(s in ('Go: Home','Set Home') for s,_ in obstacles),'favorites tiles unavailable'
+print('information rectangles',obstacles)
 proof={
 'idle':lambda: any(label(n)=='Search field' for n in nodes),
 'results':lambda: any(label(n).startswith('Result:') for n in nodes),
@@ -130,9 +163,14 @@ done
 if grep -q 'S=100.95.16.47:5555' docs/s2-camera.sh; then
   blocked d "S2 camera criteria unchanged" "existing harness hardcodes tablet; emulator-safe port required"
 else
-  SERIAL="$S" bash docs/s2-camera.sh "$TAG-s2" > "$EVID/s2-camera.txt" 2>&1
+  PARENT_LEASE=1 SERIAL="$S" PYTHON="${PYTHON:-python3}" bash docs/s2-camera.sh "$TAG-s2" "$AGENT" > "$EVID/s2-camera.txt" 2>&1
   rc=$?
   row d "S2 camera criteria unchanged" "exit=$rc" "$([ "$rc" = 0 ] && echo PASS || echo FAIL)" s2-camera.txt
 fi
+sh_ settings put system user_rotation "$ROTATION" >/dev/null
+sh_ settings put system accelerometer_rotation "$AUTO" >/dev/null
+actual_rotation=$(sh_ settings get system user_rotation | tr -d '\r')
+actual_auto=$(sh_ settings get system accelerometer_rotation | tr -d '\r')
+row restore "rotation and auto-rotate restored" "$ROTATION/$AUTO -> $actual_rotation/$actual_auto" "$([ "$ROTATION/$AUTO" = "$actual_rotation/$actual_auto" ] && echo PASS || echo FAIL)" -
 crash_gate
 finish

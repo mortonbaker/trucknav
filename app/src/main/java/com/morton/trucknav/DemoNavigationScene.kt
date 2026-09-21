@@ -6,6 +6,10 @@ import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -31,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
 import com.stadiamaps.ferrostar.composeui.config.VisualNavigationViewConfig
+import com.stadiamaps.ferrostar.composeui.config.withRoadNameView
+import com.stadiamaps.ferrostar.composeui.config.withProgressView
 import com.stadiamaps.ferrostar.composeui.config.withInstructionsView
 import com.stadiamaps.ferrostar.composeui.config.withCustomOverlayView
 import com.stadiamaps.ferrostar.composeui.config.withSpeedLimitStyle
@@ -38,7 +44,7 @@ import com.stadiamaps.ferrostar.composeui.runtime.KeepScreenOnDisposableEffect
 import com.stadiamaps.ferrostar.composeui.views.components.speedlimit.SignageStyle
 import com.stadiamaps.ferrostar.maplibreui.NavigationMapClickResult
 import com.stadiamaps.ferrostar.maplibreui.runtime.rememberNavigationMapState
-import com.stadiamaps.ferrostar.maplibreui.views.DynamicallyOrientingNavigationView
+import com.morton.trucknav.nav.CornerNavigationView
 import com.morton.trucknav.ui.DestinationSelectionBottomSheet
 import com.morton.trucknav.ui.DestinationSelectionCameraEffect
 import kotlinx.serialization.json.buildJsonObject
@@ -57,6 +63,7 @@ import uniffi.ferrostar.GeographicCoordinate
 
 private val PORTRAIT_BOTTOM_CHROME = 175.dp
 
+@OptIn(kotlin.time.ExperimentalTime::class)
 @Composable
 fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel) {
   // Keeps the screen on at consistent brightness while this Composable is in the view hierarchy.
@@ -226,7 +233,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       navigationMapState = navigationMapState,
   )
 
-  DynamicallyOrientingNavigationView(
+  CornerNavigationView(
       modifier = Modifier.fillMaxSize().onSizeChanged { mapSize = it },
       baseStyle = BaseStyle.Uri(MapStyles.url(mapStyle)),
       navigationMapState = navigationMapState,
@@ -234,16 +241,37 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       showDefaultPuck = false,   // the 4Runner is the puck; see VehiclePuck.kt
       mapViewInsets = mapViewInsets,
       viewModel = viewModel,
-      config = VisualNavigationViewConfig.Default().withSpeedLimitStyle(SignageStyle.MUTCD),
+      config = VisualNavigationViewConfig(showMute = false, showZoom = false, showRecenter = false).withSpeedLimitStyle(SignageStyle.MUTCD),
       views =
           NavigationViewComponentBuilder.Default()
               .withInstructionsView { modifier, state ->
-                com.morton.trucknav.routingui.RoutingInstructions(modifier, state, routeSource)
+                com.morton.trucknav.routingui.RoutingInstructions(
+                    modifier.padding(end = if (landscape) 0.dp else 84.dp)
+                        .semantics { contentDescription = "Turn instructions" }, state, routeSource)
+              }
+              .withProgressView { modifier, state, onExit ->
+                state.progress?.let { progress ->
+                  com.stadiamaps.ferrostar.composeui.views.components.TripProgressView(
+                      modifier = modifier.padding(end = if (landscape) 0.dp else 84.dp)
+                          .semantics { contentDescription = "Trip progress" },
+                      theme = com.stadiamaps.ferrostar.composeui.theme.DefaultNavigationUITheme.tripProgressViewTheme,
+                      progress = progress,
+                      onTapExit = onExit,
+                  )
+                }
+              }
+              .withRoadNameView { modifier, roadName, _ ->
+                if (navigationMapState.isTrackingUser) roadName?.let { name ->
+                  Box(modifier.padding(end = 84.dp)) {
+                    com.stadiamaps.ferrostar.composeui.views.components.CurrentRoadNameView(currentRoadName = name)
+                  }
+                }
               }
               .withCustomOverlayView(
                   customOverlayView = { modifier ->
                     NotNavigatingOverlay(
-                        modifier = modifier,
+                        // Information lane leaves the full-map action corners clear.
+                        modifier = Modifier.padding(end = 84.dp),
                         viewModel = viewModel,
                         navigationMapState = navigationMapState,
                         onTopOverlayBottomChanged = { destinationPreviewTopPaddingPx = it },
@@ -291,12 +319,14 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
 
   if (sceneState.isDestinationSheetVisible) {
     sceneState.selectedDestination?.let { destination ->
-      DestinationSelectionBottomSheet(
+      Box(Modifier.fillMaxSize().padding(end = 84.dp)) {
+        DestinationSelectionBottomSheet(
           destination = destination,
           onClose = { viewModel.clearSelectedDestination() },
           onStartNavigation = { viewModel.startSelectedDestinationNavigation() },
           onSheetHeightChanged = viewModel::setDestinationSheetHeight,
-      )
+        )
+      }
     }
   }
 }

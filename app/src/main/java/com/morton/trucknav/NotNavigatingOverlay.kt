@@ -51,25 +51,18 @@ fun NotNavigatingOverlay(
   val uiState by viewModel.navigationUiState.collectAsState()
   var showStyles by remember { mutableStateOf(false) }
 
-  // Style switcher lives on the map in every state (centre-left is free in
-  // both of Ferrostar's navigating layouts and in ours).
+  val controlsScene by viewModel.sceneState.collectAsState()
+  com.morton.trucknav.nav.ControlStack(
+      navigating = uiState.isNavigating(),
+      muted = uiState.isMuted == true,
+      map = navigationMapState,
+      onMute = { viewModel.toggleMute() },
+      onLayers = { showStyles = true },
+      onAddStop = { viewModel.setAddingStop(!controlsScene.addingStop) },
+  )
   val foreign by com.morton.trucknav.nav.NavGuard.foreign.collectAsState()
   InnerGridView(
       modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
-      centerStart = {
-        val scene by viewModel.sceneState.collectAsState()
-        Column {
-          NavigationUIButton(onClick = { showStyles = true }, buttonSize = DpSize(56.dp, 56.dp)) {
-            Icon(LayersIcon, contentDescription = "Map style")
-          }
-          if (uiState.isNavigating()) {
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
-            NavigationUIButton(onClick = { viewModel.setAddingStop(!scene.addingStop) }, buttonSize = DpSize(56.dp, 56.dp)) {
-              Icon(androidx.compose.material.icons.Icons.Filled.AddLocation, contentDescription = "Add stop")
-            }
-          }
-        }
-      },
       center = {
         // Only one navigator: if another app is guiding, say so and offer the stop.
         foreign?.let { f ->
@@ -154,19 +147,5 @@ fun NotNavigatingOverlay(
         ) { name, c -> panelTab = null; com.morton.trucknav.nav.NavLog.log("quick", "go $name (panel)"); viewModel.startNavigation(c, name) }
       }
     }
-    InnerGridView(
-        modifier = modifier.fillMaxSize().padding(bottom = 16.dp, top = 16.dp),
-        centerEnd = {
-          NavigationUIButton(
-              onClick = { navigationMapState.recenter(isNavigating = false) },
-              buttonSize = DpSize(48.dp, 48.dp),
-          ) {
-            Icon(
-                painter = painterResource(R.drawable.my_location_24px),
-                contentDescription = stringResource(R.string.center_on_my_location),
-            )
-          }
-        },
-    )
   }
 }
