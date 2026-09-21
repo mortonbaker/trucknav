@@ -110,7 +110,7 @@ object BookDownloads {
         val s = AbsClient.openPlaySession(id) ?: throw IllegalStateException("no play session (offline?)")
         AbsClient.close(s.sessionId)
         val d = dir(ctx, id).apply { mkdirs() }
-        val base = BuildConfig.absUrl.trimEnd('/')
+        val base = com.morton.trucknav.settings.Configuration.value("absUrl").trimEnd('/')
         val token = AbsClient.ensureToken() ?: throw IllegalStateException("no token")
         val tracks = s.tracks.map { t -> Track(t.index, t.startOffset, t.duration, "${t.index}${t.ext ?: ".audio"}") }
         val total = s.tracks.size

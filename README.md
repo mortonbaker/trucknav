@@ -1,86 +1,102 @@
 # TruckNav
 
-An Android head unit for a truck, without Google. One app owns the screen and draws
-everything itself: offline map and turn-by-turn navigation, music, audiobooks, YouTube,
-the vehicle's power system, and the vehicle's relays. It runs as the HOME app on a cheap
-tablet (Samsung Galaxy Tab A7 Lite) mounted in a 4Runner, and it keeps working with no
-signal.
+An Android head unit for a truck, without Google Play Services. One app owns the
+screen: offline maps and navigation, music, audiobooks, YouTube, vehicle power and
+relays. It runs as the HOME app on an inexpensive Android tablet.
 
-Status: **alpha, one vehicle, built in the open.** Expect rough edges. See
-[`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) for what is done and what is next, and
-[`docs/BUGS.md`](docs/BUGS.md) for what is known to be wrong.
+Status: **alpha**. See [the plan](docs/PLAN.md), [measured smoke results](docs/SMOKE-TEST.md)
+and [known bugs](docs/BUGS.md).
 
-## What it does today
+## What it does
 
-- **Map + navigation** — [Ferrostar](https://github.com/stadiamaps/ferrostar) on
-  [MapLibre](https://maplibre.org/), Protomaps PMTiles basemap stored on the tablet
-  (3 GB for four states), routing from a self-hosted [Valhalla](https://github.com/valhalla/valhalla),
-  geocoding from [Photon](https://photon.komoot.io/). Five map styles (light, dark, satellite,
-  hybrid, terrain). Your own vehicle is the location marker. Camera padding that respects
-  the side panel and orientation. Search pill built to in-car contrast/size rules.
-  Lettered results with distance/ETA, route preview with alternates, favorites (Home/Work/places),
-  add-a-stop, arrival card, speed-limit sign, per-class voice toggles, auto day/night, a GPS
-  plausibility gate, and a guard that stops any other navigator so only one voice speaks.
-- **HTTP API + MCP** — `:8782` (bearer token): state, favorites, navigate, add_stop, stop;
-  `mcp/trucknav_mcp.py` wraps it so an agent can add places or start a route.
-- **Music** — controls any app's media session; browses [Finamp](https://github.com/jmshrv/finamp) (Jellyfin) through MediaBrowser.
-- **Audiobooks** — its own media3 player streaming from [Audiobookshelf](https://www.audiobookshelf.org/) with
-  progress sync, ±30 s, and a 1.0–2.5× speed ladder.
-- **YouTube** — a WebView pane (history-first, Live/Shorts filtering in progress).
-- **Power** — live Victron data over MQTT from a Venus OS Raspberry Pi (battery, solar, loads),
-  always visible in a strip under the map.
-- **Vehicle** — a switch panel for an ESPHome relay board (Starlink power, rear lights, …),
-  discovered on the local network.
-- **Cockpit chrome** — immersive full screen, its own status strip (clock, Wi-Fi, tailnet,
-  GPS age, battery), a rail of panes, overlay dock over foreign apps, navigation event log.
+- MapLibre maps with Protomaps PMTiles extracts, five map styles, Ferrostar
+  navigation and Valhalla routing with an on-device fallback.
+- Favorites, Home/Work, recent destinations, route previews, stops, arrival,
+  voice classes, automatic night maps and a configurable vehicle puck.
+- On-device Settings, generated API tokens, authenticated HTTP API and MCP tools.
+- Music controls for existing media apps, Audiobookshelf playback and downloads,
+  and a YouTube WebView.
+- Victron/Venus MQTT telemetry and an ESPHome relay panel.
 
-Everything is Material icons and driving-sized targets. No emoji, no Play Services.
+## Set up for your own truck
 
-## Architecture in one paragraph
+1. Build with JDK 21, Android SDK 36 and the included Gradle wrapper. Set
+   `ANDROID_HOME` to the installed SDK. **An empty `local.properties` is supported.**
+   Run `./gradlew assembleDebug` for an emulator or `./gradlew assembleRelease`
+   with your release signing configuration for a physical tablet.
+2. Install the APK and follow the first-run setup. TruckNav generates a private
+   API token automatically. View its QR code in **Settings → API**. Regenerate
+   there whenever clients should lose access.
+3. In **Settings → Places**, set Home and Work from the current GPS fix, a search
+   result or a long press on the map. No personal home coordinate is compiled in.
+   Before GPS arrives, the initial position uses the last accepted fix, then the
+   PMTiles extract centre.
+4. In **Settings → Servers**, configure your Photon search, optional Valhalla
+   routing endpoint, map style, Audiobookshelf credentials, Venus host/portal ID
+   and relay host. Blank Valhalla means on-device routing; install its routing pack.
+   Blank relay host enables discovery. Enter personal traffic-provider keys on
+   the device or through the API/MCP—never in source or `local.properties`.
+5. In **Settings → Vehicle**, choose **Replace vehicle**. Use a top-down,
+   nose-up PNG/JPEG no larger than 2 MiB. A transparent 512 × 512 PNG works best.
+   TruckNav saves a proportional 256 × 256 PNG and updates the map puck live.
+   **Restore default vehicle** removes it.
+6. Configure units, voice classes and automatic night maps in Settings. **About**
+   shows the version and installed packs and exports navigation logs.
+7. Install offline map and routing assets using [the runbook](docs/RUNBOOK.md).
+   Without a local map pack the online demonstration map remains available;
+   offline navigation needs both map and routing data for your region.
 
-`CockpitScreen.kt` is the head unit: a rail, the map column (Ferrostar
-`DynamicallyOrientingNavigationView` + power strip), and a side pane. Panes are plain
-composables (`media/`, `power/`, `books/`, `YouTubePane`). Map tiles, fonts, sprites and style
-JSON are served to MapLibre by an in-app loopback HTTP server (`LocalAssetServer`) from the
-app's external files directory, because MapLibre's `pmtiles://` reader needs an HTTP origin.
-Routing, geocoding, audiobooks and the Venus MQTT broker are network services configured in
-`local.properties`. `nav/NavLog.kt` writes a rolling log of every route, instruction and
-progress tick so field bugs can be diagnosed after the drive.
+Existing installations can migrate their previous build configuration on first
+launch; subsequent configuration lives in the app's private `files/settings.json`.
+Never clear app data to upgrade: it deletes the offline basemap.
 
-## Building
+## API and MCP
 
-Requirements: JDK 21, Android SDK 36, Gradle wrapper included. Kotlin/Compose/AGP versions are
-in `gradle/libs.versions.toml`.
+The API listens on port 8782 with bearer authentication. Settings GET masks
+secrets; PUT changes settings atomically. Home/Work and vehicle uploads can be
+managed without touching the screen. See [docs/API.md](docs/API.md) for endpoints,
+request limits, token setup and MCP tools.
 
-1. Copy `local.properties.example` to `local.properties` and fill it in. Nothing in the
-   repo works without it; nothing in it belongs in a commit.
-2. `./gradlew assembleRelease` (R8 + arm64-only, ~26 MB). Debug builds also work.
-3. Push the map assets to the tablet once (they are not in the repo — see
-   `docs/mkstyles.py` and `docs/BUILD-PLAN.md` → "Offline basemap"):
-   `/sdcard/Android/data/com.morton.trucknav/files/{southcentral.pmtiles,fonts/,sprites/,style-*.json}`.
-4. Install, then make it the home app and grant the listeners it relies on:
-   ```
-   adb install -r app/build/outputs/apk/release/app-release.apk
-   adb shell cmd package set-home-activity com.morton.trucknav/.MainActivity
-   adb shell cmd notification allow_listener com.morton.trucknav/.overlay.MediaListener
-   adb shell appops set com.morton.trucknav SYSTEM_ALERT_WINDOW allow
-   adb shell appops set com.morton.trucknav GET_USAGE_STATS allow
-   ```
-   Never `pm clear` the app: that deletes the basemap.
+`mcp/trucknav_mcp.py` provides `get_settings`, `set_setting`, `set_home`, `set_work`,
+`upload_vehicle`, favorites and navigation tools. Supply `TRUCKNAV_URL` and
+`TRUCKNAV_TOKEN` through your MCP client's private environment.
 
-## Testing
+## Architecture
 
-Tests run against the real tablet over adb and measure screenshots instead of trusting eyes:
-`docs/*.sh` drive the UI with `uiautomator`, `docs/puck.py`, `contrast.py`, `mapstat.py` read the
-pixels, and results are appended to `docs/SMOKE-TEST.md` with the version and date. Every slice
-in `docs/BUILD-PLAN.md` has done-criteria a script can falsify.
+`CockpitScreen.kt` hosts the rail, navigation map, power strip and secondary panes.
+The local asset server serves offline styles, fonts, sprites and PMTiles over
+loopback HTTP. `settings/Settings.kt` persists configuration atomically and exposes
+per-key StateFlows. `VehicleImage` persists and publishes the custom puck.
+Navigation logs provide field evidence for routes, instructions and progress.
 
-## Contributing
+## Build and install
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md). Short version: pick a slice or a bug from the docs,
-keep the done-criteria falsifiable, put no secrets or home coordinates in the tree, Material
-icons only, and prove it on a device before calling it done.
+The Gradle wrapper and `gradle/libs.versions.toml` define the toolchain. Release
+builds use arm64 and shrinking; debug builds include emulator architectures.
+Release signing reads the existing private keystore properties file.
+
+After replacing an APK, restore the HOME activity:
+
+```sh
+adb -s "$SERIAL" install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s "$SERIAL" shell cmd package set-home-activity com.morton.trucknav/.MainActivity
+adb -s "$SERIAL" shell am start -n com.morton.trucknav/.MainActivity
+```
+
+The runbook documents one-time location, notification, media-listener and overlay
+grants. Physical tablet changes require the project lease. Do not clear app data,
+kill the shared adb server, or cut the tablet's Wi-Fi.
+
+## Verification and contributing
+
+Read [docs/AGENTS.md](docs/AGENTS.md) before sharing a tree or device and
+[CONTRIBUTING.md](CONTRIBUTING.md) before changing code.
+
+`docs/cockpit-smoke.sh` checks 13 cockpit behaviors. `docs/emu-settings.sh` measures
+S20 API/MCP behavior, vehicle pixels and persistence, and the hardcoded-coordinate
+check. Use a unique evidence tag; results and screenshots belong under
+`~/evidence/`, with measured receipts appended to `docs/SMOKE-TEST.md`.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [LICENSE](LICENSE).

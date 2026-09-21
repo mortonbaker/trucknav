@@ -80,7 +80,7 @@ data class PhotonHit(
     val etaS: Double? = null,         // Valhalla matrix, arrives a moment later
 ) {
     fun detourText() = detourS?.let { "+${kotlin.math.round(it / 60).toInt()} min" } ?: ""
-    fun distanceText() = distanceM?.let { m -> val mi = m / 1609.344; if (mi < 10) "%.1f mi".format(mi) else "${mi.toInt()} mi" } ?: ""
+    fun distanceText() = distanceM?.let { com.morton.trucknav.settings.Units.distance(it) } ?: ""   // S20 units (mi/km)
     fun etaText() = etaS?.let { s -> val m = (s / 60).toInt(); if (m < 60) "$m min" else "${m / 60} h ${m % 60} min" } ?: ""
 }
 

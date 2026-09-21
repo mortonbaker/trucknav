@@ -37,7 +37,7 @@ import java.util.concurrent.Executors
 //   POST   /api/stop
 class ApiServer(val port: Int = 8782) {
     companion object { private const val TAG = "ApiServer" }
-    private val token = BuildConfig.apiToken
+    private val token get() = Settings.get("apiToken").orEmpty()
     private val pool = Executors.newFixedThreadPool(4)
     private val main = Handler(Looper.getMainLooper())
     private var server: ServerSocket? = null
@@ -45,7 +45,7 @@ class ApiServer(val port: Int = 8782) {
 
     fun start() {
         if (server != null) return
-        if (token.isBlank()) { Log.i(TAG, "no apiToken in local.properties; API off"); return }
+        if (token.isBlank()) { Log.i(TAG, "API token missing"); return }
         val s = ServerSocket(port, 8); server = s
         Thread({ while (!s.isClosed) { try { val c = s.accept(); pool.execute { try { handle(c) } catch (e: Exception) { Log.w(TAG, "handle: $e") } } } catch (e: Exception) { if (!s.isClosed) Log.w(TAG, "accept: $e") } } }, "api-server").apply { isDaemon = true }.start()
         Log.i(TAG, "listening on :$port")
@@ -99,6 +99,30 @@ class ApiServer(val port: Int = 8782) {
                     }
                     Settings.update(changes)
                     reply(200, buildJsonObject { Settings.snapshot().forEach { (k, v) -> put(k, v) } })
+                }
+                method == "GET" && path == "/api/vehicle" -> {
+                    val png = com.morton.trucknav.settings.VehicleImage.bytes()
+                    if (png == null) reply(404, buildJsonObject { put("error", "Using default vehicle") })
+                    else {
+                        out.write("HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: ${png.size}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n".toByteArray())
+                        out.write(png); out.flush()
+                    }
+                }
+                method == "PUT" && path == "/api/vehicle" -> {
+                    com.morton.trucknav.settings.VehicleImage.put(bytes)
+                    reply(200, buildJsonObject { put("ok", true); put("width", 256); put("height", 256) })
+                }
+                method == "DELETE" && path == "/api/vehicle" -> {
+                    com.morton.trucknav.settings.VehicleImage.delete()
+                    reply(200, buildJsonObject { put("ok", true) })
+                }
+                method == "PUT" && path in setOf("/api/favorites/home", "/api/favorites/work") -> {
+                    val o = Json.parseToJsonElement(body).jsonObject
+                    val lat = o["lat"]!!.jsonPrimitive.doubleOrNull!!
+                    val lng = o["lng"]!!.jsonPrimitive.doubleOrNull!!
+                    require(lat.isFinite() && lng.isFinite() && lat in -90.0..90.0 && lng in -180.0..180.0)
+                    val kind = path.substringAfterLast('/')
+                    reply(200, fav(Favorites.save(o["name"]?.jsonPrimitive?.content ?: kind.replaceFirstChar { it.uppercase() }, GeographicCoordinate(lat, lng), kind)))
                 }
                 method == "GET" && path == "/api/state" -> reply(200, state())
                 method == "GET" && path == "/api/favorites" -> reply(200, buildJsonArray { Favorites.all.value.forEach { add(fav(it)) } })

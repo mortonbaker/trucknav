@@ -169,7 +169,7 @@ class BooksPlayerService : MediaSessionService() {
                     source = "stream"
                     offsets = s!!.tracks.map { it.startOffset }.toDoubleArray()
                     items = s.tracks.map { t ->
-                        MediaItem.Builder().setUri(Uri.parse(BuildConfig.absUrl.trimEnd('/') + t.contentUrl)).setMediaId("${id}#${t.index}")
+                        MediaItem.Builder().setUri(Uri.parse(com.morton.trucknav.settings.Configuration.value("absUrl").trimEnd('/') + t.contentUrl)).setMediaId("${id}#${t.index}")
                             .setMediaMetadata(MediaMetadata.Builder().setTitle(s.title).setArtist(s.author).setArtworkUri(Uri.parse(s.coverUrl)).setIsPlayable(true).build()).build()
                     }
                 }

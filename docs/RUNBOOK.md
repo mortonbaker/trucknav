@@ -79,7 +79,52 @@ Rules for every harness: check the lease, abort if anything is playing, never cu
 ## Known gaps
 
 - S4 YouTube needs the operator's Google sign-in on the tablet.
-- S6 on-device routing: not started; the basemap works offline, routes do not.
-- S15 tile prefetch along the route: research first.
+- S6 on-device routing requires routing/valhalla_tiles.tar for your region; blank Valhalla URL selects the on-device path.
+- S15 along-route prefetch is implemented; physical-drive coverage remains a separate acceptance item.
 - S16: firmware compiled but not flashed; `relay.sh` / Node-RED / B8 unverified end-to-end until the truck is powered (`docs/s16-pi-relay.sh`).
 - 30-minute soak never recorded.
+
+## S20 — fresh installation for another truck
+
+Build with an empty local.properties and ANDROID_HOME pointing at Android SDK 36.
+No provider key or personal location belongs in build configuration.
+
+1. Install the debug APK on a fresh Android 15 emulator (or your signed release on
+   the tablet under its lease). Restore HOME and grants using the commands above.
+2. Launch TruckNav. First-run setup creates a private API token. The token/QR is
+   available on that screen and in Settings → API; do not put screenshots of an
+   exposed token in public evidence.
+3. Continue to the map. Without an offline pack, the online MapLibre demonstration
+   style is available. First-run/About shows the exact offline asset destination.
+4. For offline maps, copy the region's PMTiles extract, fonts/, sprites/ and
+   style-*.json to Android/data/com.morton.trucknav/files/. The style JSON must
+   reference the extract filename and the loopback server at 127.0.0.1:8781.
+   Restart after installing assets. Initial position is last accepted GPS fix,
+   otherwise the PMTiles v3 header centre. A fresh profile without a pack or GPS
+   starts at the world origin until a fix arrives.
+5. For offline routes add routing/valhalla_tiles.tar. Alternatively set your
+   Valhalla URL in Settings → Servers. A blank URL is visibly labeled
+   “Routing: On-device only”.
+6. Set Home/Work in Settings → Places, or PUT /api/favorites/home|work. Choose a
+   vehicle image in Settings → Vehicle or upload it through the API/MCP.
+7. Configure servers, units, voice and auto night. Enter traffic keys only in
+   Settings or the API/MCP. Configure TRUCKNAV_URL/TRUCKNAV_TOKEN in your MCP
+   client's private environment. See API.md for the complete contract.
+
+The emulator asset helper needs an explicit source directory:
+
+    ~/bin/emu.sh assets trucknav ~/trucknav-assets
+
+Never omit that source argument: the current helper expands an empty source to
+the host root.
+
+Acceptance (assigned emulator, lease required):
+
+    SERIAL=emulator-5554 docs/emu-settings.sh <unique-tag>
+    SERIAL=emulator-5554 docs/cockpit-smoke.sh <unique-tag> claude-vehicle
+
+The Settings harness restores its temporary Home/Work, image and settings fixtures.
+A pass requires measured visible puck replacement within 2 seconds, persistence
+after force-stop, default restoration, real MCP requests, and zero crashes.
+Empty-build/fresh-profile proof is recorded separately; an existing token does
+not count as newly generated.

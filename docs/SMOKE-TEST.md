@@ -382,6 +382,27 @@ Initial migration probe read before Settings initialization; corrected to poll, 
 
 | 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
 | 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 73 requests | PASS | map.png |
+
+## s19-stops — 2026-09-20 20:49:46, version 0.34.0-s19, agent astra-2, tag run5 (166s)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| a | next-stop bar; 3 ascending ETAs | 3 rows; displayed ETA minutes=[1248, 1250, 1252] | PASS | bar.xml bar.png list.xml list.png |
+| b | pins 1,2 and destination flag | 2 numbered features; 1 flag | PASS | pins.png pins.log |
+| e | leg meters/seconds within 5% of Valhalla | bar=[1251.3604548755509, 56.39569670021868] Valhalla=[1253.0, 56.485] errors=[0.0013084957098556378, 0.0015810091135933574] | PASS | valhalla.json comparison.json numbers.log |
+| c | arrival once and next stop within 2000ms | flip=211ms; arrival synthesis=1; no deviation-handler | PASS | arrival.log arrival.xml arrival.png drive.log |
+| c-linger | intermediate card auto-clears; navigation continues | card cleared; observed after 7405ms; navigation continues | PASS | arrival-cleared.xml arrival-cleared.png |
+| d | remove preserves navigation; updates bar/pins | route replaced; destination next; 0 stops + flag; NAVIGATING | PASS | remove.log removed.xml removed.png |
+| restore | idle; rotation/recents/foreground restored; playback paused | verified; network unchanged | PASS | restored-state.json restored-media.txt |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Evidence: `/home/morton/evidence/s19-stops-run5`
+
+
+## S19 final cockpit regression — code127, 2026-09-20, astra-2
+
+| 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
+| 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 57 requests | PASS | map.png |
 | 3a route | results within 15 s, sheet within 10 s, End Navigation within 16 s of Start | results 2s sheet 0s end-nav 1/0ss | PASS | route.png |
 | 3b end | End Navigation leaves navigation (button gone within 3 s) | end-nav=0 | PASS | - |
 | 4 power strip | all 8 cells present (SOC Batt Solar Alt Load Net Link Starlink); Link state is informational | 8 cells, link=text="--" | PASS | map.png |
@@ -405,6 +426,132 @@ Astra: Google traffic removed, TomTom-only settings (tomtom|off) with migration 
 | first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
 
 Evidence: build01:~/evidence/cockpit-merge-s22d/, ~/evidence/s23-fullmap-merge-s22d/
+
+## S20 continuation — 2026-09-20, settings-s20 (acceptance pending)
+
+| Check | Measured | Status |
+|---|---|---|
+| Empty local.properties build | assembleDebug passed; generated apiToken and valhallaUrl empty | PASS (build only) |
+| Whole-app hardcoded-home scan | grep -r homeLat app/: exit 1, 0 bytes | PASS |
+| App and S20 instrumentation compilation | :app:assembleDebug and :app:assembleDebugAndroidTest passed | PASS (compilation only) |
+| Empty-build first-run token and fresh profile | APK archived at ~/evidence/s20-empty-build/app-empty.apk; runtime not yet exercised | NOT RUN |
+| Vehicle <=2 s / persistence / MCP Home | docs/emu-settings.sh prepared; 5554 held for another session's S9b soak | BLOCKED (device lease) |
+| Settings UI/QR and storage tests | S20SettingsTest compiled; not yet executed | NOT RUN |
+| Final main integration and tablet install | No tablet changes by this S20 session | NOT RUN |
+
+The broad assembleDebugAndroidTest target hit an existing :routing test AAR
+desugaring requirement; app-specific instrumentation compiles. This is not an S20
+runtime pass. The separate contract's earlier 13/13 receipt does not cover the
+remainder. Nav-owned preview/trip unit consumers and runtime preview adapter
+refresh are explicitly pending coordination.
+
+
+## S20 remainder — fresh empty-build evidence (2026-09-20, 20:30 CDT)
+
+Source: settings-s20 at 948b028 plus acceptance-tool fixes; app APK unchanged from
+that source. This is feature-branch evidence, not a final production merge/tablet
+receipt. The earlier contract-only merge remains separate (05f6151).
+
+| Gate | Measurement | Result |
+|---|---|---|
+| Empty local.properties runtime | New AVD s20-fresh-empty-2007; token 64 hex characters, blank Valhalla and ABS password before runtime provisioning | PASS |
+| First run | Setup dialog and RUNBOOK pack steps; Android fullscreen tutorial dismissed; token masked by API; runtime configuration accepted | PASS |
+| Settings API | 10/10 pane configuration keys readable; token rotation invalidates old token immediately; invalid provider/type return 400 | PASS |
+| Secret masking/logs | Disposable secret returned only as last four; plaintext absent from logcat | PASS |
+| Vehicle upload | 512px PNG becomes 256x256 PNG; 4,194 magenta puck pixels visible at 0.492 s | PASS |
+| Vehicle restart/delete | 4,194 pixels after force-stop/restart; DELETE returns default at 0.492 s (0 magenta pixels) | PASS |
+| Vehicle rejection | Invalid image 400; >2 MiB 413 | PASS |
+| MCP | Real set_home updates visible Go: Home tile; set_work leaves one Work; upload_vehicle roundtrip returns 2,864-byte image | PASS |
+| Hardcoded home | grep -r homeLat app/: exit 1, no matches | PASS |
+| App crashes / ADB retries | 0 / 0 during fresh-profile acceptance | PASS |
+| RUNBOOK setup | Correct assets command with explicit ~/trucknav-assets; fresh profile renders Denton roads/buildings/POIs after GPS fixture | PASS |
+| Cockpit smoke | 13/13; 51 local asset/tile requests; search 1 s, preview 0 s, navigation first tap/0 s; 8 strip cells; 0 crashes | PASS |
+| Instrumentation controls | Five storage/image/position/token tests pass; Settings UI automation remains under diagnosis | PENDING |
+| Production merge / final tablet install | GitHub publication approval pending; tablet untouched | NOT RUN |
+
+Evidence on atlas01: ~/evidence/s20-fresh-empty-2007 (first-run, assets,
+instrumentation and map-denton.png), ~/evidence/s20-fresh-empty-2007-resume
+(S20 acceptance results), ~/evidence/cockpit-s20-fresh-empty-2007 (13 rows).
+Existing-profile build01 validation also passed API/MCP/puck gates: hot reload
+0.915 s, delete 0.457 s, 0 app crashes; one explicitly recorded ADB log read retry.
+Its emulator lease was released for Astra at 20:18. Do not reuse the earlier
+colliding nav-driver run as evidence for either slice.
+
+Nav-owned unit formatting consumers and route-preview runtime adapter refresh
+remain pending in protected files. S20 does not edit those files. Astra's
+uncommitted TomTom/off-only traffic removal on build01 must be preserved during
+future integration; do not reintroduce Google-provider UI or validation then.
+
+
+### S20 UI gate resolved — 2026-09-20 20:38 CDT
+
+`S20SettingsTest`: **6/6 PASS in 14.818 s** on the fresh empty-build AVD.
+Units switched to metric and persisted; Auto night changed and restored; the
+on-screen QR decoded to the current bearer token (compared in memory, never
+written into screenshots/logs); About exposed log export. The five core tests
+cover atomic Settings updates/flows/UTF-8/null, short-secret masking, PNG fit and
+invalid-image preservation, last-fix -> PMTiles centre, and token entropy/unit
+formatting. Evidence: ~/evidence/s20-fresh-empty-2007/instrumentation-final.txt.
+
+The UI failure was resolved in the test harness: UiAutomation's cached node
+bounds were stale after scroll, off-screen controls needed scrolling, and the
+fully visible API chip is 85 px (the test's former 90 px minimum was wrong).
+The app APK was unchanged throughout these harness fixes. Final feature evidence:
+**cockpit 13/13; instrumentation 6/6; vehicle upload/delete 0.492/0.492 s;
+0 app crashes; fresh runtime/configuration/MCP/no-homeLat gates PASS.**
+
+The separately merged Settings MCP contract is now installed at
+~/trucknav-mcp/trucknav_mcp.py after exact comparison with its pre-contract
+source; rollback copy: trucknav_mcp.pre-settings-contract.py. No tablet request
+or installation occurred. Public GitHub publication and production merge/install
+remain blocked pending explicit approval; nav-owned Units/preview consumer hooks
+remain pending. Do not mark S20 fully delivered or bump the production version yet.
+
+
+S20 cleanup, 20:41 CDT: original atlas01 `trucknav-tab` AVD restored; disposable
+profile stopped; no playback left running. The original emulator's expired S20
+lease was free and subsequently acquired by astra-3 for S23; no further device
+changes by S20. `docs/emu-settings.sh` now invokes the same passing six-test UI/core
+suite after its API/MCP checks, so the repeatable acceptance entrypoint includes
+the on-screen controls and QR proof. Its component commands were run above; the
+combined wrapper was syntax-checked after wiring them together.
+
+### 2026-09-20 — 0.35.0 / 135 merge of settings-s20 (claude-nav, build01 emulator-5558)
+
+Vehicle track (Codex): S20 usable by others — Settings pane (Places/Vehicle/Servers/Units/Voice/API/About), runtime settings.json, no hardcoded home, PUT/GET/DELETE /api/vehicle + MCP upload_vehicle/set_home/set_work, first-run setup card with token QR (once per install), RUNBOOK setup. Merge fixes: pane uses traffic.TrafficSettings() (Google fields dropped), TomTom-only validation kept with S20 checks, harnesses dismiss the setup card.
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s20b/, ~/evidence/s23-fullmap-merge-s20b/
+
+Evidence: build01 ~/evidence/cockpit-s19-final/. 13/13 PASS, 0 crashes, Map foreground, playback paused.
+
+
+## S19 final arrival regression — code127, 2026-09-20, astra-2
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| final-arrival | final card then actual auto-stop at 10s | one card; actual stop after 10004ms; reroute events=1 | PASS | final-card.png final-ended.png arrival.log |
+| crash | zero package crashes | 0 | PASS | crash.txt |
+| restore | recents/location restored; navigation idle | verified | PASS | recent-before.json |
+
+Evidence: build01 ~/evidence/s19-stops-final-arrival2/. Actual auto-stop 10004ms. One auxiliary-drive reroute is retained as measured; primary S19 run5 had zero deviation-handler lines. Portrait passed in ~/evidence/s19-stops-final-arrival/portrait.png (opened visually).
+
+### 2026-09-20 — 0.36.0 / 139 merge of stops-s19 (claude-nav, build01 emulator-5558)
+
+astra-2: S19 trip bar + stops — next-stop name and ETA/min/mi to it in the bar, per-stop list with remove, numbered stop pins + flag, named stop arrivals (spoken once, card auto-clears, auto-continue), leg numbers within 0.2 % of Valhalla. Gate: cockpit 13/13, s23-fullmap 7/7, s19-stops.sh 8/8 (harness now SERIAL/EMU_PROFILE-overridable).
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s19a/, ~/evidence/s23-fullmap-merge-s19a/, ~/evidence/s19-stops-merge-s19a/
 
 ## S21 — Search along route, ready for merge
 
