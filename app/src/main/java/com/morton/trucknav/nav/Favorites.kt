@@ -63,13 +63,17 @@ object Favorites {
     fun places() = _all.value.filter { it.kind == PLACE }.sortedByDescending { it.addedAt }
 
     // Home/Work are singletons: saving replaces the existing one.
-    fun save(name: String, c: GeographicCoordinate, kind: String = PLACE): Favorite {
+    @Synchronized fun save(name: String, c: GeographicCoordinate, kind: String = PLACE): Favorite {
+        require(c.lat.isFinite() && c.lng.isFinite() && c.lat in -90.0..90.0 && c.lng in -180.0..180.0)
+        require(kind in setOf(HOME, WORK, PLACE))
         val f = Favorite(id = (if (kind == PLACE) "p-" + System.currentTimeMillis().toString(36) else kind), name = name, lat = c.lat, lng = c.lng, kind = kind)
         _all.value = _all.value.filter { it.id != f.id && !(kind != PLACE && it.kind == kind) } + f
-        persist(); NavLog.log("favorites", "saved $kind \"$name\" ${c.lat},${c.lng}")
+        persist()
+        if (kind != PLACE) com.morton.trucknav.settings.Settings.set("place." + kind, favToJson(f).toString())
+        NavLog.log("favorites", "saved $kind \"$name\" ${c.lat},${c.lng}")
         return f
     }
-    fun remove(id: String) { _all.value = _all.value.filter { it.id != id }; persist(); NavLog.log("favorites", "removed $id") }
+    fun remove(id: String) { if (id == HOME || id == WORK) com.morton.trucknav.settings.Settings.set("place." + id, null); _all.value = _all.value.filter { it.id != id }; persist(); NavLog.log("favorites", "removed $id") }
 
     fun noteDestination(name: String?, c: GeographicCoordinate) {
         val label = name?.takeIf { it.isNotBlank() } ?: "%.4f, %.4f".format(c.lat, c.lng)

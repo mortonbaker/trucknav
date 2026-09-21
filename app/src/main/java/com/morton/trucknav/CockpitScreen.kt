@@ -80,23 +80,41 @@ import com.morton.trucknav.power.RelayClient
 // pane, and a secondary pane (media / power / apps) beside it. The rail is
 // the launcher: there is no other home screen. Whatever is making sound is
 // controllable from the strip under the rail regardless of which app owns it.
-enum class Pane { Map, Music, Books, YouTube, Power, Vehicle, Apps }
+enum class Pane { Map, Music, Books, YouTube, Power, Vehicle, Apps, Settings }
 
 @Composable
 fun CockpitScreen() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val configuredStyle by com.morton.trucknav.settings.Settings.flow("styleUrl").collectAsState()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    var pane by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(Pane.Music) }  // survives rotation
+    var pane by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(Pane.Map) }  // survives rotation
 
-    val venus = remember { VenusClient(ctx.applicationContext, BuildConfig.venusHost, BuildConfig.venusPortalId, scope) }
+    val venusHost by com.morton.trucknav.settings.Settings.flow("venusHost").collectAsState()
+    val portalId by com.morton.trucknav.settings.Settings.flow("venusPortalId").collectAsState()
+    val venus = remember(venusHost, portalId) { VenusClient(ctx.applicationContext, venusHost.orEmpty(), portalId.orEmpty(), scope) }
+    var choosingPlace by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    val scene by AppModule.viewModel.sceneState.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(scene.selectedDestination, choosingPlace) {
+        val kind = choosingPlace
+        val destination = scene.selectedDestination
+        if (kind != null && destination != null) {
+            com.morton.trucknav.nav.Favorites.save(destination.label ?: kind.replaceFirstChar { it.uppercase() }, destination.coordinate, kind)
+            choosingPlace = null
+            AppModule.viewModel.clearSelectedDestination()
+            pane = Pane.Settings
+        }
+    }
+    DisposableEffect(venus) { venus.start(); onDispose { venus.stop() } }
     val relay = remember { RelayClient(ctx.applicationContext).also { it.start() } }
     val music = remember { MediaSource(ctx, "com.unicornsonlsd.finamp", "Music") }
     val watcher = remember { SessionWatcher(ctx) }
     DisposableEffect(Unit) {
-        venus.start(); watcher.start(); OverlayService.start(ctx)
-        onDispose { venus.stop(); watcher.stop(); music.disconnect() }
+        watcher.start(); OverlayService.start(ctx)
+        onDispose { watcher.stop(); music.disconnect() }
     }
+
+    com.morton.trucknav.settings.FirstRun()
 
     val rail: @Composable (Modifier) -> Unit = { m ->
         Rail(m, pane, landscape, watcher, onSelect = { pane = it }, onYouTube = { pane = Pane.YouTube },
@@ -109,23 +127,28 @@ fun CockpitScreen() {
         Pane.YouTube -> { m -> YouTubePane(m.padding(8.dp)) }
         Pane.Power -> { m -> Column(m.padding(8.dp)) { PowerPane(venus, relay) } }
         Pane.Vehicle -> { m -> com.morton.trucknav.power.VehiclePane(relay, m.padding(8.dp)) }
+        Pane.Settings -> { m -> com.morton.trucknav.settings.SettingsPane(m, onChooseMap = { kind -> AppModule.viewModel.clearSelectedDestination(); choosingPlace = kind; pane = Pane.Map }) }
         Pane.Apps -> { m -> AppsPane(m.padding(8.dp), onSelect = { pane = it }) }
     }
 
     Column(Modifier.fillMaxSize().background(Color(0xFF0b0e12))) {
         StatusStrip()
+        if (choosingPlace != null) Row(Modifier.fillMaxWidth()) {
+            Text("Long press the map to set " + choosingPlace, color = Color.White, modifier = Modifier.weight(1f).padding(12.dp))
+            androidx.compose.material3.TextButton({ choosingPlace = null; pane = Pane.Settings }) { Text("Cancel") }
+        }
         if (landscape) {
             Row(Modifier.fillMaxSize()) {
                 rail(Modifier.width(88.dp).fillMaxHeight())
                 Column(Modifier.weight(if (side == null) 1f else 0.6f).fillMaxHeight()) {
-                    Box(Modifier.weight(1f).fillMaxWidth()) { DemoNavigationScene() }
+                    Box(Modifier.weight(1f).fillMaxWidth()) { androidx.compose.runtime.key(configuredStyle) { DemoNavigationScene() } }
                     PowerStrip(venus, relay)
                 }
                 side?.let { it(Modifier.weight(0.4f).fillMaxHeight()) }
             }
         } else {
             Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(if (side == null) 1f else 0.5f).fillMaxWidth()) { DemoNavigationScene() }
+                Box(Modifier.weight(if (side == null) 1f else 0.5f).fillMaxWidth()) { androidx.compose.runtime.key(configuredStyle) { DemoNavigationScene() } }
                 PowerStrip(venus, relay)
                 side?.let { it(Modifier.weight(0.5f).fillMaxWidth()) }
                 rail(Modifier.fillMaxWidth().height(88.dp))
@@ -144,6 +167,7 @@ private fun Rail(modifier: Modifier, current: Pane, vertical: Boolean, watcher: 
         Triple(Pane.Power, Icons.Filled.Bolt, "Power"),
         Triple(Pane.Vehicle, Icons.Filled.ToggleOn, "Vehicle"),
         Triple(Pane.Apps, Icons.Filled.Apps, "Apps"),
+        Triple(Pane.Settings, Icons.Filled.Settings, "Settings"),
     )
     val button: @Composable (Triple<Pane?, ImageVector, String>, Modifier) -> Unit = { (p, icon, label), slot ->
         val selected = p != null && p == current
@@ -200,7 +224,7 @@ private fun AppsPane(modifier: Modifier, onSelect: (Pane) -> Unit) {
         Entry("YouTube", Icons.Filled.SmartDisplay, Pane.YouTube, 0xFFff3b30),
         Entry("Power", Icons.Filled.Bolt, Pane.Power, 0xFFe8a317),
         Entry("Vehicle", Icons.Filled.ToggleOn, Pane.Vehicle, 0xFF35c76d),
-        Entry("Settings", Icons.Filled.Settings, null, 0xFF9aa4b2),
+        Entry("Settings", Icons.Filled.Settings, Pane.Settings, 0xFF9aa4b2),
     )
     Card(modifier.fillMaxSize()) {
         LazyVerticalGrid(columns = GridCells.Adaptive(140.dp), modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

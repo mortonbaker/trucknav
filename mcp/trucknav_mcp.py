@@ -77,5 +77,32 @@ def set_setting(key: str, value: str | None) -> dict:
     Returns settings with secret values masked; changes survive app restart."""
     return call("PUT", "/api/settings", {key: value})
 
+@mcp.tool()
+def set_home(lat: float, lng: float, name: str = "Home") -> dict:
+    """Set or replace Home; its tile updates immediately and persists across restart."""
+    return call("PUT", "/api/favorites/home", {"lat": lat, "lng": lng, "name": name})
+
+@mcp.tool()
+def set_work(lat: float, lng: float, name: str = "Work") -> dict:
+    """Set or replace Work; its tile updates immediately and persists across restart."""
+    return call("PUT", "/api/favorites/work", {"lat": lat, "lng": lng, "name": name})
+
+@mcp.tool()
+def upload_vehicle(path: str) -> dict:
+    """Upload a local PNG/JPEG image, at most 2 MiB, as the map puck.
+    Use a top-down vehicle with its nose pointing UP. A square transparent PNG
+    (512 px recommended) gives the best result; JPEG has an opaque background.
+    The tablet fits it proportionally in a transparent 256x256 PNG and hot-reloads
+    the puck without restart. The path is on this MCP server's host."""
+    from pathlib import Path
+    source = Path(path).expanduser()
+    if source.stat().st_size > 2 * 1024 * 1024:
+        raise ValueError("Vehicle image must be at most 2 MiB")
+    data = source.read_bytes()
+    req = urllib.request.Request(URL + "/api/vehicle", data=data, method="PUT",
+        headers={"Authorization": "Bearer " + _token(), "Content-Type": "application/octet-stream"})
+    with urllib.request.urlopen(req, timeout=15) as response:
+        return json.load(response)
+
 if __name__ == "__main__":
     mcp.run()

@@ -85,6 +85,8 @@ class RelayClient(private val ctx: Context) {
 
     // Cached host first, then the board's own AP, then a parallel /24 sweep (64 wide, ~4 s worst case).
     private suspend fun discover(): String? {
+        val configured = com.morton.trucknav.settings.Settings.get("relayHost")?.takeIf { it.isNotBlank() }
+        if (configured != null) return configured.takeIf { isBoard(it) }
         val candidates = listOfNotNull(_state.value.host, "192.168.4.1")
         for (h in candidates) if (isBoard(h)) return h
         val sem = Semaphore(64)

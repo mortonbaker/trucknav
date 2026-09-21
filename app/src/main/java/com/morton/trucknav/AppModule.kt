@@ -30,15 +30,15 @@ object AppModule {
     private const val TAG = "AppModule"
     private lateinit var appContext: Context
 
-    val mapStyleUrl: String get() = BuildConfig.styleUrl
-    val valhallaUrl: String get() = BuildConfig.valhallaUrl
-    val photonUrl: String get() = BuildConfig.photonUrl
+    val mapStyleUrl: String get() = com.morton.trucknav.settings.Configuration.value("styleUrl")
+    val valhallaUrl: String get() = com.morton.trucknav.settings.Configuration.value("valhallaUrl")
+    val photonUrl: String get() = com.morton.trucknav.settings.Configuration.value("photonUrl")
 
     val api: com.morton.trucknav.nav.ApiServer by lazy { com.morton.trucknav.nav.ApiServer() }
     val assets: LocalAssetServer by lazy { LocalAssetServer(appContext.getExternalFilesDir(null)!!) }
     fun init(context: Context) {
         appContext = context.applicationContext
-        com.morton.trucknav.settings.Settings.init(appContext)
+        com.morton.trucknav.settings.Configuration.init(appContext)
         com.morton.trucknav.nav.NavLog.init(appContext)
         com.morton.trucknav.nav.Favorites.init(appContext)
         com.morton.trucknav.nav.NavPrefs.gate = voiceGate
@@ -66,10 +66,7 @@ object AppModule {
         FerrostarForegroundServiceManager(appContext, DefaultForegroundNotificationBuilder(appContext))
     }
 
-    val routing by lazy {
-        com.morton.trucknav.routing.HybridRouteProvider(appContext, valhallaUrl, okHttp,
-            log = { com.morton.trucknav.nav.NavLog.log("routing", it) })
-    }
+    val routing by lazy { com.morton.trucknav.settings.RuntimeRouting(appContext, okHttp) }
 
     val ferrostarCore: FerrostarCore by lazy {
         val core = FerrostarCore(
