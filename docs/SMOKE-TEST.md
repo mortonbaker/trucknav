@@ -364,6 +364,24 @@ their integrated UI harness extensions and real credentials. See
 
 
 
+## S22 Google removal contract — Astra
+Before S21: remove Google traffic implementation, fixture and UI option; settings accepts only tomtom/off; TomTom fixture tests and cockpit smoke must pass with zero app crashes. Live TomTom-key checks remain OPEN.
+
+## S22 TomTom-only cleanup — 2026-09-20, Astra, 0.33.1 / 125
+
+Provider implementation, UI option and key entry removed. Retired key is deleted on upgrade; Google selection becomes off. Settings rejects retired provider/key writes.
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| app/test build | app and instrumentation APKs compile | :app:assembleDebug :app:assembleDebugAndroidTest success | PASS | build01 traffic-s22 |
+| fixtures | TomTom contract + rejection tests | 12 tests OK | PASS | ~/evidence/s22-tomtom-only-125/instrumentation.txt |
+| upgrade | old credential deleted, selection off | observed after 0.27s initialization | PASS | ~/evidence/s22-tomtom-only-125/migration.txt |
+| crash | 0 app crashes after migration and restoration | 0 | PASS | ~/evidence/s22-tomtom-only-125/crash.txt |
+
+Initial migration probe read before Settings initialization; corrected to poll, then passed. Initial all-module test build hit pre-existing routing desugaring metadata; app-only instrumentation target builds successfully, no routing changes. Original emulator settings restored, cockpit Map foreground, media paused. Route screenshot inspected. Full S22 live-key criteria remain OPEN, not inferred from fixtures.
+
+| 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
+| 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 73 requests | PASS | map.png |
 
 ## s19-stops — 2026-09-20 20:49:46, version 0.34.0-s19, agent astra-2, tag run5 (166s)
 
@@ -396,6 +414,18 @@ Evidence: `/home/morton/evidence/s19-stops-run5`
 | 5 pane Apps | opens ("Apps" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Apps.png |
 | 6 overlay | our overlay window exists while Settings is foreground | windows=1 fg=com.android.settings | PASS | overlay.png |
 | 7 crash gate | 0 crashes for com.morton.trucknav | 0 | PASS | crash.txt |
+
+### 2026-09-20 — 0.34.0 / 133 merge of traffic-s22 (claude-nav, build01 emulator-5558)
+
+Astra: Google traffic removed, TomTom-only settings (tomtom|off) with migration of any persisted Google selection; 12 TomTom fixtures.
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s22d/, ~/evidence/s23-fullmap-merge-s22d/
 
 Evidence: build01 ~/evidence/cockpit-s19-final/. 13/13 PASS, 0 crashes, Map foreground, playback paused.
 
