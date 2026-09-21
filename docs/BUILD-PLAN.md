@@ -419,3 +419,16 @@ Do not mark DONE until ARM64 tablet performance and real GPS reroute/End tests p
 | 7 crash gate | 0 | 0 | PASS |
 
 Emulator: fav-emu2 7/7. Not done: drag-to-reorder favorites (order = Home, Work, newest first); "≤ 6 rows per screen" is by construction (76 dp rows in a 55 %-height sheet / full-height panel), not measured.
+
+## S9b — 30-minute soak (small) — criteria written 2026-09-20 19:40 before the run
+
+**Goal:** the cockpit survives half an hour of real use without leaking, stalling or dying. Emulator (fake drive at 60 mph, hybrid, the test book streaming), because the Pi is offline and the tablet may not play the operator's media. SMOKE-TEST §21 wanted "Pi connected" too; that part waits for the truck.
+
+**Done when (`docs/soak.sh <tag>`, 30 min, a sample every 5 min = 7 samples t0…t30):**
+1. Navigation active at every sample (End Navigation present; route long enough not to arrive: Sanger → Ardmore OK, ~75 mi).
+2. The test book is `PLAYING` at every sample (started once at t0; never the operator's media).
+3. Crash gate 0 and no `ANR in com.morton.trucknav` for the whole window.
+4. Memory: our process PSS at t30 ≤ 1.3 × PSS at t5 and ≤ 600 MB (the S6 ceiling).
+5. Map alive: the loopback asset server answered new requests between every pair of samples.
+6. Prefetch alive: ≥ 2 `near region` re-cuts logged over the 30 miles (one per 10 km ⇒ expect ~4).
+7. Book position monotonic across samples and advanced ≥ 25 min of audio at 1.0×.
