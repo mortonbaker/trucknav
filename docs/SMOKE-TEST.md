@@ -362,3 +362,34 @@ their integrated UI harness extensions and real credentials. See
 | Layers sheet | `Traffic` row present, content-desc `Traffic off` (keyless → silent) | PASS |
 | First build of the merge worktree | black map, 0 loopback requests — no `local.properties` in the worktree (demotiles style URL, API off) | harness caught it |
 
+
+
+## S22 Google removal contract — Astra
+Before S21: remove Google traffic implementation, fixture and UI option; settings accepts only tomtom/off; TomTom fixture tests and cockpit smoke must pass with zero app crashes. Live TomTom-key checks remain OPEN.
+
+## S22 TomTom-only cleanup — 2026-09-20, Astra, 0.33.1 / 125
+
+Provider implementation, UI option and key entry removed. Retired key is deleted on upgrade; Google selection becomes off. Settings rejects retired provider/key writes.
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| app/test build | app and instrumentation APKs compile | :app:assembleDebug :app:assembleDebugAndroidTest success | PASS | build01 traffic-s22 |
+| fixtures | TomTom contract + rejection tests | 12 tests OK | PASS | ~/evidence/s22-tomtom-only-125/instrumentation.txt |
+| upgrade | old credential deleted, selection off | observed after 0.27s initialization | PASS | ~/evidence/s22-tomtom-only-125/migration.txt |
+| crash | 0 app crashes after migration and restoration | 0 | PASS | ~/evidence/s22-tomtom-only-125/crash.txt |
+
+Initial migration probe read before Settings initialization; corrected to poll, then passed. Initial all-module test build hit pre-existing routing desugaring metadata; app-only instrumentation target builds successfully, no routing changes. Original emulator settings restored, cockpit Map foreground, media paused. Route screenshot inspected. Full S22 live-key criteria remain OPEN, not inferred from fixtures.
+
+| 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
+| 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 73 requests | PASS | map.png |
+| 3a route | results within 15 s, sheet within 10 s, End Navigation within 16 s of Start | results 2s sheet 0s end-nav 1/0ss | PASS | route.png |
+| 3b end | End Navigation leaves navigation (button gone within 3 s) | end-nav=0 | PASS | - |
+| 4 power strip | all 8 cells present (SOC Batt Solar Alt Load Net Link Starlink); Link state is informational | 8 cells, link=text="--" | PASS | map.png |
+| 5 pane Music | opens ("Play/Pause" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Music.png |
+| 5 pane Books | opens ("Play/Pause" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Books.png |
+| 5 pane YouTube | opens ("a WebView" on screen; up to 3 taps x 6 s) | 1/6s | PASS | pane-YouTube.png |
+| 5 pane Power | opens ("State of charge" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Power.png |
+| 5 pane Vehicle | opens ("Vehicle" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Vehicle.png |
+| 5 pane Apps | opens ("Apps" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Apps.png |
+| 6 overlay | our overlay window exists while Settings is foreground | windows=1 fg=com.android.settings | PASS | overlay.png |
+| 7 crash gate | 0 crashes for com.morton.trucknav | 0 | PASS | crash.txt |
