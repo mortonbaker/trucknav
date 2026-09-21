@@ -268,6 +268,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
                   ),
           ),
   ) { ui ->
+    com.morton.trucknav.traffic.TrafficLayer()
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
     com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected) { viewModel.selectPreview(it) }

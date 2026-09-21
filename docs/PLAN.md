@@ -38,10 +38,10 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S16 | Relay board on every network + Pi flow | S | app side DONE 0.21.0; truck side STAGED (ESP32 OTA when battery healthy, operator present) | `s16-pi-relay.sh` |
 | S17 | Navigation, finished (11 parts) | M–L | DONE 0.28.0; + preview-first favorites and A/B/C badges 0.30.0 | SMOKE-TEST "S17.1–S17.11" |
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
-| S19 | Trip bar + stops (Google/Tesla) | M | NEXT (nav track) | — |
+| S19 | Trip bar + stops (Google/Tesla) | M | assigned to astra-2 2026-09-20 20:10 (box in HANDOFF.md) | — |
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
-| S21 | Search along route | M | NEW (operator 2026-09-20) | — |
-| S22 | Traffic | M + key | NEW (operator 2026-09-20) | — |
+| S21 | Search along route | M | assigned to astra 2026-09-20 20:05 (box in HANDOFF.md) | — |
+| S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
@@ -98,8 +98,8 @@ What Google does: while navigating, "Search along route" with category chips (ga
 Build: chips in the add-stop box while navigating; Photon has no corridor search, so sample the *remaining* route every ~10 km, query Photon with `lat/lon` bias (+ `osm_tag` for the category) per sample, dedupe, keep hits ≤ 2 mi from the route, rank by detour = matrix(now→hit) + matrix(hit→next waypoint) − matrix(now→next waypoint) via Valhalla `sources_to_targets`; letters A–F, "+N min" on each; pick → `addStop`. Free text works the same way (bias along the corridor instead of at the puck).
 Done when (emulator, `docs/emu-along.sh`): (a) on the home → Whole Foods route, chip "Gas" returns ≥ 3 hits all within 2 mi of the route (distance-to-polyline logged) in < 4 s; (b) each row shows "+N min" and N equals the matrix detour ±1 min; (c) picking B → `route stop-add` with B as the next stop, trip continues; (d) free text "Kroger" while navigating returns hits sorted by detour, not by distance from the puck; (e) offline (server down) → chips disabled with a reason in the strip, no crash.
 
-### S22 — Traffic: TomTom + Google (medium + keys) — NEW, Astra
-Operator decision 2026-09-20: build **both** integrations; keys are entered in the Settings screen, or through the API/MCP (`PUT /api/settings {"tomtomKey": "…"}`, `set_setting("googleMapsKey", …)`), never in source or `local.properties`.
+### S22 — Traffic: TomTom only (medium + key) — Astra; foundation merged 0.33.0
+Operator decision 2026-09-20 19:50: **TomTom only. Google dropped** (Google Maps Platform terms forbid using its data on a non-Google map; Astra flagged it, operator agreed). Remove the Google provider, its fixtures and the Settings option in the next S22 commit. Keys are BYOK: keys are entered in the Settings screen, or through the API/MCP (`PUT /api/settings {"tomtomKey": "…"}`, `set_setting("googleMapsKey", …)`), never in source or `local.properties`.
 Facts (checked 2026-09-20): self-hosted Valhalla has no live traffic. TomTom: Traffic Flow raster/vector tiles + Routing API, free allowance covers one truck (50 k tile requests/day per [pricing](https://docs.tomtom.com/pricing); [flow tiles](https://developer.tomtom.com/traffic-api/documentation/traffic-flow/raster-flow-tiles)). Google Routes `TRAFFIC_AWARE` is a Pro SKU: 5,000 free/month then $15/1000 ([billing](https://developers.google.com/maps/documentation/routes/usage-and-billing)).
 Build (all online-only, silent when offline or keyless):
 1. `traffic/TrafficProvider` interface: `flowTileUrl(z,x,y)`, `etaWithTraffic(polyline|origin,dest): Duration?`, `incidents(bbox)`; implementations `TomTomTraffic`, `GoogleTraffic`; the active one is a setting (`trafficProvider = tomtom|google|off`).
@@ -134,8 +134,8 @@ Evidence goes in `docs/SMOKE-TEST.md` (dated table, measured values, PASS/FAIL) 
 
 | Agent | Slice(s) | Machine / tree | Device for smoke | Tablet? |
 |---|---|---|---|---|
-| claude-nav (this session) | S19 trip bar + stops → S21 search along route → S23 control placement | atlas01 `~/trucknav-nav` branch `integrate-s6` | `emulator-5556` (AVD `trucknav-s6`) on atlas01 | install only, under lease |
+| claude-nav (this session) | merger only: merges + installs + docs | atlas01 `~/trucknav-nav` branch `integrate-s6` | `emulator-5556` (AVD `trucknav-s6`) on atlas01 | install only, under lease |
 | claude-vehicle | S20 usable by others (Settings pane, `Settings` store + API/MCP **first**, no hardcoded places, vehicle upload, first run) | atlas01 `~/trucknav-fav` or a new `~/trucknav-s20` worktree, branch `settings-s20` | `emulator-5554` (AVD `trucknav-tab`) on atlas01 | final install + `cockpit-smoke.sh`, under lease |
-| Astra | S22 traffic (TomTom + Google) after the `Settings` contract lands; S7 look-and-feel merge while waiting | build01 `~/trucknav` (clone of GitHub main), branch `traffic-s22` | `emulator-5554` on **build01** (`~/bin/emu.sh`, profile `trucknav`) | never (no GPS/TTS needed); nav installs the merged build |
+| Astra | S22 traffic (TomTom only) → S21 search along route; astra-2: S19; astra-3: S23 a–d | build01 `~/trucknav` (clone of GitHub main), branch `traffic-s22` | `emulator-5554` on **build01** (`~/bin/emu.sh`, profile `trucknav`) | never (no GPS/TTS needed); nav installs the merged build |
 
 Merge order: S20's `Settings` commit → S7 → S19 → S22 → S20 rest → S21 → S23. Every merge: `max(versionCode)+2`, `cockpit-smoke.sh` on an emulator, then the tablet under a lease.

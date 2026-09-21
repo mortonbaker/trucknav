@@ -116,6 +116,7 @@ fun MapStyleSheet(onDismiss: () -> Unit) {
                 }
             }
         }
+        com.morton.trucknav.traffic.TrafficLayerToggle()
         androidx.compose.foundation.layout.Spacer(Modifier.height(24.dp))
       }
     }
