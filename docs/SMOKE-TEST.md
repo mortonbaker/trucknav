@@ -393,3 +393,16 @@ Initial migration probe read before Settings initialization; corrected to poll, 
 | 5 pane Apps | opens ("Apps" on screen; up to 3 taps x 6 s) | 1/0s | PASS | pane-Apps.png |
 | 6 overlay | our overlay window exists while Settings is foreground | windows=1 fg=com.android.settings | PASS | overlay.png |
 | 7 crash gate | 0 crashes for com.morton.trucknav | 0 | PASS | crash.txt |
+
+### 2026-09-20 — 0.34.0 / 133 merge of traffic-s22 (claude-nav, build01 emulator-5558)
+
+Astra: Google traffic removed, TomTom-only settings (tomtom|off) with migration of any persisted Google selection; 12 TomTom fixtures.
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s22d/, ~/evidence/s23-fullmap-merge-s22d/
+
