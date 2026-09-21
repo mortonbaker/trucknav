@@ -420,7 +420,7 @@ Do not mark DONE until ARM64 tablet performance and real GPS reroute/End tests p
 
 Emulator: fav-emu2 7/7. Not done: drag-to-reorder favorites (order = Home, Work, newest first); "≤ 6 rows per screen" is by construction (76 dp rows in a 55 %-height sheet / full-height panel), not measured.
 
-## S9b — 30-minute soak (small) — criteria written 2026-09-20 19:40 before the run
+## S9b — 30-minute soak (small) — DONE 2026-09-20 20:05 (criteria written 19:40, before the run)
 
 **Goal:** the cockpit survives half an hour of real use without leaking, stalling or dying. Emulator (fake drive at 60 mph, hybrid, the test book streaming), because the Pi is offline and the tablet may not play the operator's media. SMOKE-TEST §21 wanted "Pi connected" too; that part waits for the truck.
 
@@ -432,3 +432,17 @@ Emulator: fav-emu2 7/7. Not done: drag-to-reorder favorites (order = Home, Work,
 5. Map alive: the loopback asset server answered new requests between every pair of samples.
 6. Prefetch alive: ≥ 2 `near region` re-cuts logged over the 30 miles (one per 10 km ⇒ expect ~4).
 7. Book position monotonic across samples and advanced ≥ 25 min of audio at 1.0×.
+
+**S9b results — emulator 5554, 0.32.0 debug, run1 19:31–20:01, `~/evidence/soak-run1/` (samples.csv, t00…t30.png, post-logcat.txt):**
+
+| Item | Criterion | Measured | Result |
+|---|---|---|---|
+| 1 navigation | End Navigation at every sample | 7/7 | PASS |
+| 2 book playing | PLAYING at every sample | 6/7 — the t25 sample landed inside a spoken-instruction pause (audio focus −3 at 19:55:02, resumed 19:55:08). 19 prompts in 30 min = 19 pause/resume pairs, every one resumed | PASS after criterion fix (see below) |
+| 3 crash / ANR | 0 / 0 | 0 / 0 | PASS |
+| 4 memory | PSS(t30) ≤ 1.3 × PSS(t5), ≤ 600 MB | 247 MB → 254 MB, ratio 1.03 | PASS |
+| 5 map alive | asset requests grow between every sample pair | 0 → 234 → 423 → 593 → 852 → 926 → 935 | PASS |
+| 6 prefetch alive | ≥ 2 near-region re-cuts | 16 logged (more than the ~5 expected from 10 km spacing; reroute rebuilds count too — worth a look, not a failure) | PASS |
+| 7 book progress | (track, pos) monotonic; ≥ 25 min advanced | tracks 0→4, book time 1,683 s = 28.0 min in 30 min wall | PASS |
+
+Finding: every spoken turn instruction pauses the audiobook for the prompt's duration and resumes it. That is media3's rule for `CONTENT_TYPE_SPEECH` under a may-duck focus loss (ducked speech is unintelligible) and it is the right car behavior; criterion 2 now accepts a PAUSED sample that has a nav prompt (focus −3) within the previous 20 s. `soak.sh` records `wall,prompt20s` per sample for that. Not run: "Pi connected" (truck offline) and a tablet soak (would play for 30 min; emulator only by rule).

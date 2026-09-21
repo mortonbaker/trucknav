@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.." || exit 1
 TAG=${1:?tag}; S=${SERIAL:-emulator-5554}; P=com.morton.trucknav
 DUR=${DUR:-1800}; STEP=${STEP:-300}
 E=~/evidence/soak-$TAG; mkdir -p "$E"; exec > >(tee "$E/run.log") 2>&1
-BOOK=c09674da-63f8-40a8-861c-8ecc60ab5cd9                                  # test book #2 for soaks: How This Ends, 34 min, unlistened
+BOOK=8c5b4b84-f32a-4a0e-a8b3-8c64f2809915                                  # the designated test book
 START="33.3630 -97.1740"; DEST="34.1740 -97.1430"                            # Sanger TX -> Ardmore OK, ~75 mi on I-35
 declare -a ROWS; row() { ROWS+=("| $1 | $2 | $3 | $4 |"); echo "[$4] $1: $3"; }
 sh() { adb -s $S shell "$@"; }
