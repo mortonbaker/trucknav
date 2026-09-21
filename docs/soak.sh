@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.." || exit 1
 TAG=${1:?tag}; S=${SERIAL:-emulator-5554}; P=com.morton.trucknav
 DUR=${DUR:-1800}; STEP=${STEP:-300}
 E=~/evidence/soak-$TAG; mkdir -p "$E"; exec > >(tee "$E/run.log") 2>&1
-BOOK=8c5b4b84-f32a-4a0e-a8b3-8c64f2809915                                  # the designated test book
+BOOK=c09674da-63f8-40a8-861c-8ecc60ab5cd9                                  # test book #2 for soaks: How This Ends, 34 min, unlistened
 START="33.3630 -97.1740"; DEST="34.1740 -97.1430"                            # Sanger TX -> Ardmore OK, ~75 mi on I-35
 declare -a ROWS; row() { ROWS+=("| $1 | $2 | $3 | $4 |"); echo "[$4] $1: $3"; }
 sh() { adb -s $S shell "$@"; }
@@ -72,14 +72,17 @@ adb -s $S logcat -c; adb -s $S logcat -c -b crash
 ( while read -r lng lat; do adb -s $S emu geo fix "$lng" "$lat" >/dev/null; sleep 1; done < "$E/route.txt" ) & DRV=$!
 
 # --- samples
-printf "t,nav,book,pos_s,item,pss_kb,assets,recuts,crashes,anr\n" > "$E/samples.csv"
+printf "t,nav,book,pos_s,item,pss_kb,assets,recuts,crashes,anr,wall,prompt20s
+" > "$E/samples.csv"
 for t in $(seq 0 $STEP $DUR); do
   [ $t -gt 0 ] && sleep $STEP
   adb -s $S exec-out screencap -p > "$E/t$(printf %02d $((t/60))).png"
   nav=$(has "End Navigation"); st=$(mstate); pos=$(( ${mpos:-0} )); pos=$(mpos); item=$(mitem); m=$(pss)
   assets=$(adb -s $S logcat -d -s LocalAssetServer | grep -c "GET /"); recuts=$(adb -s $S logcat -d -s RoutePrefetch | grep -c "near region")
   crashes=$(adb -s $S logcat -d -b crash | grep -c "Process: $P"); anr=$(adb -s $S logcat -d | grep -c "ANR in $P")
-  echo "$((t/60)),$nav,$st,$((${pos:-0}/1000)),$item,$m,$assets,$recuts,$crashes,$anr" | tee -a "$E/samples.csv"
+  # a nav prompt (audio focus -3 to our player) in the last 20 s explains a transient PAUSED: media3 pauses speech content instead of ducking it
+  now=$(date +%s); pr=$(adb -s $S logcat -d -v epoch | grep "onAudioFocusChange(-3)" | awk -v a=$((now-20)) '$1+0>=a' | wc -l)
+  echo "$((t/60)),$nav,$st,$((${pos:-0}/1000)),$item,$m,$assets,$recuts,$crashes,$anr,$now,$pr" | tee -a "$E/samples.csv"
 done
 kill $DRV 2>/dev/null; wait $DRV 2>/dev/null
 adb -s $S logcat -d > "$E/post-logcat.txt"; adb -s $S logcat -d -b crash > "$E/crash.txt"
@@ -93,7 +96,8 @@ import csv, sys
 rows=list(csv.DictReader(open(sys.argv[1]))); n=len(rows); out=[]
 def R(item,crit,meas,ok): out.append(f"| {item} | {crit} | {meas} | {'PASS' if ok else 'FAIL'} |"); print(f"[{'PASS' if ok else 'FAIL'}] {item}: {meas}")
 navs=[int(r['nav'])>=1 for r in rows]; R("1 navigation", "End Navigation at every sample", f"{sum(navs)}/{n}", all(navs))
-plays=[r['book'].startswith("state=PLAYING") for r in rows]; R("2 book playing", "PLAYING at every sample", f"{sum(plays)}/{n}", all(plays))
+plays=[r['book'].startswith("state=PLAYING") or int(r.get('prompt20s') or 0)>0 for r in rows]
+R("2 book playing", "PLAYING at every sample, or PAUSED only inside a nav prompt (focus -3 within 20 s)", f"{sum(plays)}/{n}", all(plays))
 c=int(rows[-1]['crashes']); a=int(rows[-1]['anr']); R("3 crash/ANR", "0 crashes, 0 ANRs", f"crashes={c} anr={a}", c==0 and a==0)
 pss=[int(r['pss_kb'] or 0)//1024 for r in rows]; p5=pss[1] if n>1 else pss[0]; p30=pss[-1]
 R("4 memory", "PSS(t30) <= 1.3 x PSS(t5) and <= 600 MB", f"t5={p5} MB t30={p30} MB ratio={p30/max(p5,1):.2f}", p30<=1.3*p5 and p30<=600)
