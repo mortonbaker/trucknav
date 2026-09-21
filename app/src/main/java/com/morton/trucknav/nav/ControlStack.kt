@@ -1,6 +1,10 @@
 package com.morton.trucknav.nav
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
@@ -62,8 +67,24 @@ fun ControlStack(
     onAddStop: () -> Unit,
 ) {
     val size = DpSize(56.dp, 56.dp)
-    Box(Modifier.fillMaxSize().padding(16.dp)) {
-        Column(Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(16.dp)) {
+        // A portrait media pane can leave less height than seven 56 dp buttons need.
+        // Keep complete rows in a scrollable top group instead of overlapping the camera group.
+        val density = LocalDensity.current
+        val topHeight = with(density) {
+            // Measure the sum of individually rounded children (56dp -> 74px at 210dpi),
+            // not 260dp rounded once, which clips the fourth button by three pixels.
+            val button = 56.dp.roundToPx()
+            val gap = 12.dp.roundToPx()
+            val available = maxHeight.roundToPx() - (3 * button + 2 * gap) - gap
+            val rows = ((available + gap) / (button + gap)).coerceIn(1, if (navigating) 4 else 1)
+            (rows * button + (rows - 1) * gap).toDp()
+        }
+        Column(
+            Modifier.align(Alignment.TopEnd).heightIn(max = topHeight)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             if (navigating) {
                 NavigationUIButton(onClick = { map.cameraMode = NavigationCameraMode.OVERVIEW }, buttonSize = size) {
                     Icon(Icons.Default.Route, contentDescription = "Route Overview")
@@ -106,6 +127,7 @@ fun CornerNavigationView(
     baseStyle: BaseStyle,
     navigationMapState: NavigationMapState,
     navigationCameraOptions: NavigationCameraOptions,
+    mapHeight: androidx.compose.ui.unit.Dp,
     showDefaultPuck: Boolean,
     mapViewInsets: MutableState<PaddingValues>,
     viewModel: NavigationViewModel,
@@ -127,11 +149,19 @@ fun CornerNavigationView(
     // Crucially, this uses information insets, never the action stack's dimensions.
     val base = navigationCameraOptions.navigationPadding
     val screenHeight = configuration.screenHeightDp.dp
+    // Baseline 123 puts the puck at y=.587 with the portrait Music pane open:
+    // its fixed 175 dp bottom reserve consumes too much of that short map.
+    // Keep S2's lower-third contract there (70%) without changing the scene's templates.
+    val baseTarget = (mapHeight + base.calculateTopPadding() - base.calculateBottomPadding()) / 2
+    val top = if (ui.isNavigating() && !landscape && mapHeight > 0.dp &&
+        baseTarget < mapHeight * (2f / 3f))
+        mapHeight * 0.4f + base.calculateBottomPadding()
+        else base.calculateTopPadding()
     val extraBottom = if (ui.isNavigating()) maxOf(0.dp,
-        ((screenHeight + base.calculateTopPadding() - base.calculateBottomPadding()) / 2 -
+        ((screenHeight + top - base.calculateBottomPadding()) / 2 -
             (screenHeight - mapViewInsets.value.calculateBottomPadding() - 24.dp)) * 2) else 0.dp
     val camera = navigationCameraOptions.copy(navigationPadding = PaddingValues(
-        start = base.calculateStartPadding(direction), top = base.calculateTopPadding(),
+        start = base.calculateStartPadding(direction), top = top,
         end = base.calculateEndPadding(direction), bottom = base.calculateBottomPadding() + extraBottom))
     val ornaments = mapOptions.copy(ornamentOptions = mapOptions.ornamentOptions.copy(padding =
         PaddingValues(end = grid.calculateEndPadding(direction) + 16.dp, top = 8.dp,

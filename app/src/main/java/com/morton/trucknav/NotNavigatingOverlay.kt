@@ -45,6 +45,7 @@ fun NotNavigatingOverlay(
     viewModel: DemoNavigationViewModel,
     navigationMapState: NavigationMapState,
     onTopOverlayBottomChanged: (Int) -> Unit = {},
+    tilesMaxWidth: androidx.compose.ui.unit.Dp = 560.dp,
 ) {
   val location by viewModel.location.collectAsState()
   val isSimulating by viewModel.simulated.collectAsState()
@@ -128,7 +129,7 @@ fun NotNavigatingOverlay(
           }
           if (scene.searchResults.isEmpty()) {
             com.morton.trucknav.nav.QuickPlaces(
-                userLocation = location?.coordinates, modifier = Modifier.widthIn(max = 560.dp),
+                userLocation = location?.coordinates, modifier = Modifier.widthIn(max = tilesMaxWidth),
                 onOpen = { panelTab = it },
                 onSet = { kind -> panelTab = null; focusTick++; com.morton.trucknav.nav.NavLog.log("quick", "set $kind: focus search") },
             ) { name, c -> panelTab = null; com.morton.trucknav.nav.NavLog.log("quick", "preview $name"); viewModel.selectDestination(c, name, DestinationSelectionOrigin.SearchResult) }   // preview with alternates first (operator 2026-09-20)

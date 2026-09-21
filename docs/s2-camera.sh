@@ -6,6 +6,14 @@ SLICE=s2-camera PKG=com.morton.trucknav
 SERIAL=${SERIAL:-emulator-5554}; export SERIAL
 . ~/.claude/skills/slice-build/scripts/smoke-lib.sh
 . ~/.claude/skills/slice-build/scripts/android.sh
+crash_gate() {
+  local collected=1 c status=FAIL
+  adb -s "$S" logcat -d -b crash > "$EVID/crash.txt" || collected=0
+  adb -s "$S" logcat -d > "$EVID/post-logcat.txt" || collected=0
+  c=$(grep -c "Process: $PKG" "$EVID/crash.txt" || true)
+  [ "$collected" = 1 ] && [ "$c" = 0 ] && [ -s "$EVID/post-logcat.txt" ] && status=PASS
+  row crash "zero package crashes; both log collections succeed" "count=$c collected=$collected" "$status" crash.txt
+}
 PYTHON=${PYTHON:-python3}
 require "image measurement dependencies" "$PYTHON" -c 'import cv2,numpy,PIL'
 require "device available" adb -s "$S" get-state
@@ -37,17 +45,31 @@ api stop -X POST >/dev/null
 adb -s "$S" emu geo fix -97.204973 33.080088 >/dev/null
 sh_ am start -n "$ACT" >/dev/null
 sleep 4
+gps_ready=0
+for attempt in $(seq 1 45); do
+  adb -s "$S" emu geo fix -97.204973 33.080088 >/dev/null
+  api state > "$EVID/gps-state.json"
+  if python3 -c 'import json,sys; s=json.load(open(sys.argv[1]));sys.exit(0 if abs(s.get("lat",0)-33.080088)<.001 and abs(s.get("lng",0)+97.204973)<.001 else 1)' "$EVID/gps-state.json"; then gps_ready=1; break; fi
+  sleep 1
+done
+require "GPS gate accepted the fixture position" test "$gps_ready" = 1
 measure() {
   local state=$1
   dump > "$EVID/$state.xml"; shot "$state.png" >/dev/null
   "$PYTHON" - "$EVID" "$state" app/src/main/res/drawable-nodpi/vehicle_top.png <<'PY' > "$EVID/$state-measure.txt"
-import cv2,numpy as np,sys,re,xml.etree.ElementTree as ET
+import cv2,numpy as np,sys,re,json,xml.etree.ElementTree as ET
 from pathlib import Path
 root,state,asset=Path(sys.argv[1]),sys.argv[2],sys.argv[3]
 nodes=list(ET.parse(root/(state+'.xml')).iter('node'))
-maps=[n for n in nodes if n.get('content-desc')=='Showing a Map']
+maps=[n for n in nodes if n.get('content-desc','').startswith('Showing a Map')]
 assert maps,'no visible map'
+navigating=any(n.get('content-desc')=='End Navigation' for n in nodes)
+assert navigating==state.startswith('nav'),'navigation state does not match camera case'
 x0,y0,x1,y1=map(int,re.findall(r'\d+',maps[0].get('bounds')))
+(root/(state+'-bounds.json')).write_text(json.dumps([x0,y0,x1,y1]))
+if state.endswith('-Music'):
+    prior=json.loads((root/(state.replace('-Music','-Map')+'-bounds.json')).read_text())
+    assert (x1-x0)*(y1-y0)<.9*(prior[2]-prior[0])*(prior[3]-prior[1]),'Music pane did not open'
 density=int(re.findall(r'density:\s*(\d+)',(root/'density.txt').read_text())[-1])/160
 frame=cv2.imread(str(root/(state+'.png'))); roi=frame[y0:y1,x0:x1]
 source=cv2.imread(asset,cv2.IMREAD_UNCHANGED)

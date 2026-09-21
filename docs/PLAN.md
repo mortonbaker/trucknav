@@ -42,7 +42,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
 | S21 | Search along route | M | assigned to astra 2026-09-20 20:05 (box in HANDOFF.md) | — |
 | S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
-| S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
+| S23 | Map control placement + full-map destination mode | S | (a)–(d) DONE on controls-s23 / code 137, awaiting claude-nav merge; (e) DONE 0.32.0 | controls run3: 34/34; S2 8/8; full-map 7/7; SMOKE-TEST S23 a-d |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
 Suggested split: **nav track** S19 → S21 → S23; **vehicle track** S20 (settings + API + vehicle upload) → S16 truck side when the truck is home; **Astra** S22 traffic research + S7 merge; **operator** S4 sign-in, S10, ESP32 OTA.

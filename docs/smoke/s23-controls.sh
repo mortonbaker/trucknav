@@ -12,23 +12,35 @@ SLICE=s23-controls PKG=com.morton.trucknav SERIAL=emulator-5554
 export SERIAL
 . ~/.claude/skills/slice-build/scripts/smoke-lib.sh
 . ~/.claude/skills/slice-build/scripts/android.sh
+crash_gate() {
+  local collected=1 c status=FAIL
+  adb -s "$S" logcat -d -b crash > "$EVID/crash.txt" || collected=0
+  adb -s "$S" logcat -d > "$EVID/post-logcat.txt" || collected=0
+  c=$(grep -c "Process: $PKG" "$EVID/crash.txt" || true)
+  [ "$collected" = 1 ] && [ "$c" = 0 ] && [ -s "$EVID/post-logcat.txt" ] && status=PASS
+  row crash "zero package crashes; both log collections succeed" "count=$c collected=$collected" "$status" crash.txt
+}
 require "atlas01 only" test "$(hostname -s)" = atlas01
 require "expected version supplied" test -n "${EXPECTED_CODE:-}"
 require "device available" adb -s "$S" get-state
 docs/tablet-lock.sh "$S" acquire "$AGENT" 90 "S23 control geometry" || exit 2
 ROTATION=$(sh_ settings get system user_rotation | tr -d '\r')
 AUTO=$(sh_ settings get system accelerometer_rotation | tr -d '\r')
+PORT=
 FG=$(sh_ dumpsys activity activities | sed -n 's/.*topResumedActivity=.* u0 \([^ ]*\/[^ ]*\).*/\1/p' | head -1)
 cleanup() {
   sh_ settings put system user_rotation "$ROTATION" >/dev/null
   sh_ settings put system accelerometer_rotation "$AUTO" >/dev/null
   [ -n "$FG" ] && sh_ am start -n "$FG" >/dev/null 2>&1
+  [ -n "$PORT" ] && adb -s "$S" forward --remove "tcp:$PORT"
   docs/tablet-lock.sh "$S" release "$AGENT"
 }
 trap cleanup EXIT
 contract
 code=$(sh_ dumpsys package "$PKG" | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -1)
 require "installed code=$EXPECTED_CODE (actual=$code)" test "$code" = "$EXPECTED_CODE"
+VERSION="$VERSION / code $code"
+printf "%s\n" "$VERSION" > "$EVID/version.txt"
 sh_ settings put system accelerometer_rotation 0
 sh_ wm density > "$EVID/density.txt"
 UI=$HOME/bin/ui.sh
@@ -50,7 +62,7 @@ def touch(n):
     while n.get('clickable')!='true' and n in parent: n=parent[n]
     return n
 def intersects(a,b): return a[0]<b[2] and b[0]<a[2] and a[1]<b[3] and b[1]<a[3]
-maps=[n for n in nodes if label(n)=='Showing a Map']
+maps=[n for n in nodes if label(n).startswith('Showing a Map')]
 assert maps,'map bounds missing'
 m=bounds(maps[0]); print('map',m,'density',density)
 names={'Map style','Add stop','Center on my location','Zoom in','Zoom out','Overview','Route Overview','Mute','Unmute','Mute voice instructions','Unmute voice instructions'}
@@ -134,7 +146,17 @@ PY
     row "$id-$stem" "$id: placement/non-overlap/size-gap contract" "$measured" "$verdict" "$stem-geometry.txt; $stem.xml; $stem.png"
   done
 }
-adb -s "$S" emu geo fix -97.204973 33.080088 >/dev/null
+app_restart 4
+TOK=$(sed -n 's/^apiToken=//p' local.properties)
+PORT=$(adb -s "$S" forward tcp:0 tcp:8782 | tr -d '\r')
+gps_ready=0
+for attempt in $(seq 1 45); do
+  adb -s "$S" emu geo fix -97.204973 33.080088 >/dev/null
+  curl -fsS -m 8 -H "Authorization: Bearer $TOK" "http://127.0.0.1:$PORT/api/state" > "$EVID/gps-state.json"
+  if python3 -c 'import json,sys; s=json.load(open(sys.argv[1]));sys.exit(0 if abs(s.get("lat",0)-33.080088)<.001 and abs(s.get("lng",0)+97.204973)<.001 else 1)' "$EVID/gps-state.json"; then gps_ready=1; break; fi
+  sleep 1
+done
+require "GPS gate accepted the fixture position" test "$gps_ready" = 1
 for orient in 1 0; do
   sh_ settings put system user_rotation "$orient"
   app_restart 6
@@ -169,6 +191,8 @@ else
 fi
 sh_ settings put system user_rotation "$ROTATION" >/dev/null
 sh_ settings put system accelerometer_rotation "$AUTO" >/dev/null
+final_code=$(sh_ dumpsys package "$PKG" | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -1)
+row build "expected build remained installed" "$EXPECTED_CODE -> $final_code" "$([ "$EXPECTED_CODE" = "$final_code" ] && echo PASS || echo FAIL)" version.txt
 actual_rotation=$(sh_ settings get system user_rotation | tr -d '\r')
 actual_auto=$(sh_ settings get system accelerometer_rotation | tr -d '\r')
 row restore "rotation and auto-rotate restored" "$ROTATION/$AUTO -> $actual_rotation/$actual_auto" "$([ "$ROTATION/$AUTO" = "$actual_rotation/$actual_auto" ] && echo PASS || echo FAIL)" -

@@ -238,6 +238,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       baseStyle = BaseStyle.Uri(MapStyles.url(mapStyle)),
       navigationMapState = navigationMapState,
       navigationCameraOptions = cameraOptions,
+      mapHeight = with(density) { mapSize.height.toDp() },
       showDefaultPuck = false,   // the 4Runner is the puck; see VehiclePuck.kt
       mapViewInsets = mapViewInsets,
       viewModel = viewModel,
@@ -269,12 +270,22 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
               }
               .withCustomOverlayView(
                   customOverlayView = { modifier ->
+                    val mapWidth = with(density) { mapSize.width.toDp() }
+                    val mapHeight = with(density) { mapSize.height.toDp() }
+                    val searchWidth = (mapWidth - 84.dp - 24.dp) * if (landscape) 0.58f else 1f
+                    val tilesBottom = 16.dp + 64.dp + 8.dp +
+                        if (searchWidth >= 480.dp) 96.dp else 202.dp
+                    // In a short map, two tile rows would cover the centered 84 dp truck.
+                    // Keep those tiles to its left; do not move the camera to accommodate UI.
+                    val tilesWidth = if (tilesBottom > mapHeight / 2 - 42.dp)
+                        (mapWidth / 2 - 70.dp).coerceAtLeast(120.dp) else 560.dp
                     NotNavigatingOverlay(
                         // Information lane leaves the full-map action corners clear.
                         modifier = Modifier.padding(end = 84.dp),
                         viewModel = viewModel,
                         navigationMapState = navigationMapState,
                         onTopOverlayBottomChanged = { destinationPreviewTopPaddingPx = it },
+                        tilesMaxWidth = tilesWidth,
                     )
                   },
               ),

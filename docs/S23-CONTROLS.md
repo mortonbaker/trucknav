@@ -16,7 +16,10 @@ Pre-code acceptance contract: 26b53a9, docs/smoke/s23-controls.sh.
 | Zoom out | all | navigationMapState.zoomOut | bottom-right 3 |
 
 All map-action buttons are 56 dp; each group has 12 dp gaps and 16 dp corner
-margins, identical in portrait and landscape. Information views reserve the
+margins, identical in portrait and landscape. If a portrait media pane leaves less
+height than seven buttons require, the top group scrolls through whole button rows;
+it never overlaps the bottom group. Its viewport sums individually rounded pixels
+rather than rounding the total dp once (at 210 dpi that would clip the last row). Information views reserve the
 rightmost 84 dp (button + margin + gap). The bottom-left 120 dp remains available
 for S19. The source of S19's TripBar, StopPins and ViewModel is untouched.
 
@@ -45,6 +48,24 @@ The sources jars on Maven Central were inspected before wiring.
   editing its implementation. Scene map size and full-map destination mode are
   unchanged.
 
+## Verified S2 edge-case repairs
+
+Code 123 (the unchanged starting app code) and candidate 129 both place the
+navigating puck at map fraction (0.5006, 0.5872) with Music open in portrait.
+Evidence: atlas01:~/evidence/s23-controls-baseline123-camera/measurement.txt.
+The baseline was the build01 merge APK, re-signed with atlas01's debug key so
+app data could be retained. Its app source is identical to the starting main.
+
+The adapter now supplies a 70% target only when the existing portrait template
+would put the navigating puck above the lower third of a short map. Full-map
+templates and landscape remain unchanged. The original scene camera-options
+and ClampedInsets blocks are still byte-identical.
+
+Browsing tiles were also observed covering the centered truck in short maps.
+Their maximum width now leaves the truck's footprint clear on the right of the
+tile group; camera centering is unchanged. The S21 addingStop block remains
+byte-identical.
+
 ## Acceptance and regression
 
 Run from the worktree, under its emulator lease:
@@ -72,7 +93,7 @@ from these fixtures.
 
 ## Build checks
 
-Debug assembly passed. Android lint reported nine errors, each in an unchanged
+Debug assembly passed for codes 129, 135 and 137. Android lint reported nine errors, each in an unchanged
 file: MissingSuperCall and GestureBackNavigation (MainActivity), NewApi
 (ApiServer and StatusStrip), four UnsafeOptInUsageError (BooksPlayerService),
 and QueryAllPackagesPermission (AndroidManifest). No lint baseline was added and
@@ -85,5 +106,8 @@ with S19 by retaining its TripBar invocation and this slice's portrait end
 reserve, not by restoring the default TripProgressView. Leave S21's addingStop
 content intact; the information-lane modifier must continue to reach it.
 
-Runtime acceptance pending the shared emulator lease. Do not mark DONE or ready
-until all required rows have current build evidence.
+Code137 acceptance is complete: controls run3 34/34, S2 eight camera cases plus
+zero-crash gate, compact portrait access, full-map 7/7, and all required navigation
+regressions. Evidence: atlas01:~/evidence/s23-controls-run3/. Exact tables and
+legacy-harness caveats are in SMOKE-TEST.md. Branch ready for claude-nav; tablet
+untouched. Original rotation, style, Books pane and saved places restored.
