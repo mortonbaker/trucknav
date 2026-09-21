@@ -540,3 +540,16 @@ Evidence: build01 ~/evidence/cockpit-s19-final/. 13/13 PASS, 0 crashes, Map fore
 | restore | recents/location restored; navigation idle | verified | PASS | recent-before.json |
 
 Evidence: build01 ~/evidence/s19-stops-final-arrival2/. Actual auto-stop 10004ms. One auxiliary-drive reroute is retained as measured; primary S19 run5 had zero deviation-handler lines. Portrait passed in ~/evidence/s19-stops-final-arrival/portrait.png (opened visually).
+
+### 2026-09-20 — 0.36.0 / 139 merge of stops-s19 (claude-nav, build01 emulator-5558)
+
+astra-2: S19 trip bar + stops — next-stop name and ETA/min/mi to it in the bar, per-stop list with remove, numbered stop pins + flag, named stop arrivals (spoken once, card auto-clears, auto-continue), leg numbers within 0.2 % of Valhalla. Gate: cockpit 13/13, s23-fullmap 7/7, s19-stops.sh 8/8 (harness now SERIAL/EMU_PROFILE-overridable).
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s19a/, ~/evidence/s23-fullmap-merge-s19a/, ~/evidence/s19-stops-merge-s19a/
+
