@@ -29,7 +29,7 @@ Merge: versionCode = max across ~/trucknav*/app/build.gradle + 2; never commit i
 Do not touch nav/TripBar.kt, nav/RoutePreview.kt, nav/SearchResults.kt, DemoNavigationScene.kt, NotNavigatingOverlay.kt (claude-nav has them for S19/S21/S23).
 ```
 
-## astra — S22 "Traffic: TomTom + Google" (+ S7 merge while waiting)
+## astra — S22 "Traffic: TomTom only" (Google dropped 2026-09-20 19:50, operator decision)
 
 ```
 You are astra. Slice: S22 "Traffic: TomTom + Google" — read docs/PLAN.md §0, §3 S22 (the Settings contract is at the end of it), §5 and docs/AGENTS.md first.
