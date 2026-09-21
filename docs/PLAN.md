@@ -40,7 +40,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
 | S19 | Trip bar + stops (Google/Tesla) | M | NEXT (nav track) | — |
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
-| S21 | Search along route | M | NEW (operator 2026-09-20) | — |
+| S21 | Search along route | M | assigned to astra 2026-09-20 20:05 (box in HANDOFF.md) | — |
 | S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
@@ -134,8 +134,8 @@ Evidence goes in `docs/SMOKE-TEST.md` (dated table, measured values, PASS/FAIL) 
 
 | Agent | Slice(s) | Machine / tree | Device for smoke | Tablet? |
 |---|---|---|---|---|
-| claude-nav (this session) | S19 trip bar + stops → S21 search along route → S23 control placement | atlas01 `~/trucknav-nav` branch `integrate-s6` | `emulator-5556` (AVD `trucknav-s6`) on atlas01 | install only, under lease |
+| claude-nav (this session) | merges + installs; S19 trip bar + stops → S23 control placement | atlas01 `~/trucknav-nav` branch `integrate-s6` | `emulator-5556` (AVD `trucknav-s6`) on atlas01 | install only, under lease |
 | claude-vehicle | S20 usable by others (Settings pane, `Settings` store + API/MCP **first**, no hardcoded places, vehicle upload, first run) | atlas01 `~/trucknav-fav` or a new `~/trucknav-s20` worktree, branch `settings-s20` | `emulator-5554` (AVD `trucknav-tab`) on atlas01 | final install + `cockpit-smoke.sh`, under lease |
-| Astra | S22 traffic (TomTom + Google) after the `Settings` contract lands; S7 look-and-feel merge while waiting | build01 `~/trucknav` (clone of GitHub main), branch `traffic-s22` | `emulator-5554` on **build01** (`~/bin/emu.sh`, profile `trucknav`) | never (no GPS/TTS needed); nav installs the merged build |
+| Astra | S22 traffic (TomTom only) → S21 search along route | build01 `~/trucknav` (clone of GitHub main), branch `traffic-s22` | `emulator-5554` on **build01** (`~/bin/emu.sh`, profile `trucknav`) | never (no GPS/TTS needed); nav installs the merged build |
 
 Merge order: S20's `Settings` commit → S7 → S19 → S22 → S20 rest → S21 → S23. Every merge: `max(versionCode)+2`, `cockpit-smoke.sh` on an emulator, then the tablet under a lease.

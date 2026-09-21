@@ -61,3 +61,28 @@ claude-nav: S19 trip bar + stops → S21 search along route → S23 control plac
 atlas01 ~/trucknav-nav (branch integrate-s6), emulator-5556 (AVD trucknav-s6, ~/.config/emu/s6.env).
 Smoke: docs/emu-stops.sh (S19), docs/emu-along.sh (S21), docs/s2-camera.sh + pane screenshots (S23). Tablet install under lease only; merges + tablet installs for every track.
 ```
+
+## astra — S21 "Search along route" (assigned 2026-09-20 20:05, after the Google removal)
+
+```
+You are astra. Next slice: S21 "Search along route" — read docs/PLAN.md §0, §3 S21 and docs/AGENTS.md §8 first. Finish the Google removal on traffic-s22 and post `ready:` before starting this.
+What Google does (verified): while navigating, category chips (Gas, Food, Coffee, Groceries); results near the corridor, each with its DETOUR time ("+3 min"); tap = becomes the next stop.
+Build, on a new branch along-s21 from origin/main (worktree ~/trucknav-along on build01; FIRST: cp ~/trucknav/local.properties ~/trucknav-along/):
+  nav/AlongRoute.kt (new, yours): sample the REMAINING route every ~10 km (route geometry from the current step onward), Photon query per sample with lat/lon bias
+    (+ osm_tag=amenity:fuel | amenity:restaurant | amenity:cafe | shop:supermarket for the chips), dedupe by osm id, keep hits ≤ 2 mi from the polyline (distance-to-segment),
+    detour minutes = matrix(now→hit) + matrix(hit→next waypoint) − matrix(now→next waypoint) via nav/Valhalla.kt matrixEtas / sources_to_targets; sort by detour; letters A–F.
+  The add-stop box (NotNavigatingOverlay.kt, the `addingStop` block only — yours for this slice) gets the four chips above the field; PhotonSearch gets an optional
+    `corridor: List<GeographicCoordinate>?` parameter so free text is biased along the route instead of at the puck. Rows show "+N min" instead of straight-line distance
+    while navigating. Pick → viewModel.addStop(coordinate, label) (exists). Offline / server down → chips disabled with a one-line reason; no crash.
+  Do NOT touch nav/TripBar.kt, nav/RoutePreview.kt, nav/SearchResults.kt, DemoNavigationViewModel.kt beyond addStop's existing signature (claude-nav's S19).
+Done when (docs/smoke/s21-along.sh on YOUR emulator, emulator-5554 on build01, built on ~/.claude/skills/slice-build/scripts/smoke-lib.sh + android.sh):
+  (a) home → Whole Foods route running (POST /api/navigate), chip "Gas" → ≥ 3 hits, every hit ≤ 2 mi from the polyline (log the distance per hit), first paint < 4 s;
+  (b) each row shows "+N min" and N equals the matrix detour ± 1 min (log both);
+  (c) pick B → NavLog `route stop-add` with B as the next stop, trip still NAVIGATING, camera back to following;
+  (d) free text "Kroger" while navigating returns hits sorted by detour, not by distance from the puck (log the two orders);
+  (e) Valhalla stopped on homebackup (docker stop valhalla; it self-restores) → chips disabled with the reason in the strip, 0 crashes;
+  (f) crash gate 0. Evidence ~/evidence/s21-along-<tag>/; results appended to docs/SMOKE-TEST.md; PLAN.md status row updated.
+Rules: ~/bin/pressure.sh --stop-idle --need 4G || exit 2 before any gradlew or emulator start; flock ~/.gradle/build.lock ./gradlew -q assembleDebug; one agent per emulator (5554 is yours; nav is on 5556);
+  never the tablet; versionCode = max across every worktree on both hosts + 2; post `ready: along-s21 <code> <receipt>` in the AGENTS.md claims log — claude-nav merges and installs.
+```
+
