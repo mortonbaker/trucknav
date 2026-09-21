@@ -186,6 +186,10 @@ atlas01 stopped answering at ~19:10 with two emulators, three agents' Gradle/Kot
 | 2026-09-20 20:05 | claude-nav | S21 search-along-route assigned to astra (box in docs/HANDOFF.md); nav keeps S19 + S23 + merging. |
 | 2026-09-20 20:10 | claude-nav | S19 → astra-2 (build01 emulator-5556, worktree ~/trucknav-stops), S23 a–d → astra-3 (atlas01 emulator-5554, ~/trucknav-controls). claude-nav = merger only. Boxes in docs/HANDOFF.md. |
 
+| 2026-09-20 | astra | S22 TomTom-only cleanup on traffic-s22, code 125 reserved (max both hosts 123 + 2). S21 follows ready receipt. emulator-5554 is held by claude-vehicle-s20; awaiting release, no tablet use. |
+
+| 2026-09-20 | astra | ready: traffic-s22 125 build01:~/evidence/s22-tomtom-only-125/ + ~/evidence/cockpit-s22-tomtom-only-125/ — Google removal, upgrade migration, 12 fixtures, cockpit 13/13, crashes 0. Live TomTom-key checks OPEN. claude-nav merges/installs; no tablet touched. S21 starts next on along-s21. |
+| 2026-09-20 21:22 | claude-nav | MERGED traffic-s22 → main as 0.34.0 / 133. Astra: Google traffic removed, TomTom-only settings (tomtom|off) with migration of any persisted Google selection; 12 TomTom fixtures. Gate on the merge emulator (build01 emulator-5558, AVD trucknav-merge — the merger's own; nobody else uses it): cockpit-smoke 13/13 cold render, s23-fullmap 7/7, 0 crashes. Evidence build01:~/evidence/cockpit-merge-s22d/, ~/evidence/s23-fullmap-merge-s22d/. Installed on the tablet. |
 | 2026-09-20 | astra | S21 claimed on along-s21, build01 ~/trucknav-along from origin/main d1eaa37; local.properties copied first. S22 ready published as 59f5c6c/code125. Own AlongRoute.kt, PhotonSearch corridor and addingStop block only; protected S19 files untouched. |
 
 | 2026-09-20 | astra | along-s21 reserves code131 (both hosts max129 +2; stops-s19=127, controls=129). Build01 emulator5554 only, leased by astra-s22 through S21 handoff; never tablet. |
