@@ -90,16 +90,21 @@ fun NotNavigatingOverlay(
 
   val sceneNow by viewModel.sceneState.collectAsState()
   if (uiState.isNavigating() && sceneNow.addingStop) {
-    // Add a stop: the same search box, below the instruction card.
+    androidx.activity.compose.BackHandler { viewModel.setAddingStop(false) }
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    Box(modifier.fillMaxSize().padding(top = if (landscape) 176.dp else 200.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
-      Column(Modifier.fillMaxWidth(if (landscape) 0.58f else 1f)) {
-        PhotonSearch(userLocation = uiState.location?.coordinates ?: location?.coordinates, onResults = { viewModel.setSearchResults(it) }) { hit ->
-          viewModel.setSearchResults(emptyList())
-          viewModel.addStop(hit.coordinate, hit.label)
-        }
-        Text("Pick a stop on the way to your destination", color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp,
-            modifier = Modifier.padding(start = 20.dp, top = 6.dp), style = MaterialTheme.typography.bodyLarge.copy(shadow = Shadow(androidx.compose.ui.graphics.Color.Black, blurRadius = 6f)))
+    val corridor = com.morton.trucknav.nav.AlongRoute.remaining(uiState)
+    val next = (uiState.tripState as? uniffi.ferrostar.TripState.Navigating)?.remainingWaypoints?.firstOrNull()?.coordinate
+    Box(modifier.fillMaxSize().padding(top = if (landscape) 148.dp else 200.dp, start = 12.dp, end = 12.dp), contentAlignment = if (landscape) Alignment.TopStart else Alignment.TopCenter) {
+      PhotonSearch(
+        userLocation = uiState.location?.coordinates ?: location?.coordinates,
+        modifier = Modifier.fillMaxWidth(if (landscape) 0.68f else 1f),
+        corridor = corridor, nextWaypoint = next,
+        onResults = { viewModel.setSearchResults(it) },
+      ) { hit ->
+        viewModel.setSearchResults(emptyList())
+        com.morton.trucknav.nav.NavLog.log("along-pick", "${hit.letter} id=${hit.osmId} lat=${hit.coordinate.lat} lng=${hit.coordinate.lng} nextStop=true")
+        viewModel.addStop(hit.coordinate, hit.label)
+        com.morton.trucknav.nav.AlongRoute.observePick(viewModel, navigationMapState, hit)
       }
     }
   }

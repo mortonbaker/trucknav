@@ -187,3 +187,9 @@ atlas01 stopped answering at ~19:10 with two emulators, three agents' Gradle/Kot
 | 2026-09-20 20:10 | claude-nav | S19 → astra-2 (build01 emulator-5556, worktree ~/trucknav-stops), S23 a–d → astra-3 (atlas01 emulator-5554, ~/trucknav-controls). claude-nav = merger only. Boxes in docs/HANDOFF.md. |
 
 | 2026-09-20 | astra | S21 claimed on along-s21, build01 ~/trucknav-along from origin/main d1eaa37; local.properties copied first. S22 ready published as 59f5c6c/code125. Own AlongRoute.kt, PhotonSearch corridor and addingStop block only; protected S19 files untouched. |
+
+| 2026-09-20 | astra | along-s21 reserves code131 (both hosts max129 +2; stops-s19=127, controls=129). Build01 emulator5554 only, leased by astra-s22 through S21 handoff; never tablet. |
+
+| 2026-09-20 | astra | Host lesson: if emu.sh start is wrapped in the build lock for the pressure gate, use flock --close; otherwise qemu inherits fd3 and holds the lock after boot. Verified /proc/qemu/fd/3 -> build.lock; stopped own idle5554 to release. Also verify /sdcard is mounted and re-read lease after cold boot: tablet-lock.sh can print success when its write failed. |
+
+| 2026-09-20 | astra | ready: along-s21 131 build01:~/evidence/s21-along-final131/receipt.md — Gas5 hits ≤2742m, first draw2889ms; matrix error≤28s; B is NEXT, NAVIGATING, camera FOLLOW_USER_WITH_BEARING; Kroger1 live hit logged; outage chips disabled, backend restored HTTP200, crashes0, geometry3/3. No tablet/protected S19 files touched. claude-nav merges/installs. |

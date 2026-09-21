@@ -362,3 +362,31 @@ their integrated UI harness extensions and real credentials. See
 | Layers sheet | `Traffic` row present, content-desc `Traffic off` (keyless → silent) | PASS |
 | First build of the merge worktree | black map, 0 loopback requests — no `local.properties` in the worktree (demotiles style URL, API off) | harness caught it |
 
+
+
+## S21 — Search along route, ready for merge
+
+2026-09-20, Astra; along-s21, 0.34.1 / versionCode131; build01 emulator-5554.
+
+| ID | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| a | Gas >=3, all <=3218.688m, first paint <4000ms | hits=5 maxM=2742.0 paint=2889ms | PASS | ~/evidence/s21-along-run9/gas.png; gas-distances.json; gas-log.txt |
+| b | Every A-F row shows matrix detour +/-60s | [{'letter': 'A', 'display': '+3 min', 'matrixS': 152, 'errorS': 28}, {'letter': 'B', 'display': '+5 min', 'matrixS': 283, 'errorS': 17}, {'letter': 'C', 'display': '+5 min', 'matrixS': 284, 'errorS': 16}, {'letter': 'D', 'display': '+6 min', 'matrixS': 354, 'errorS': 6}, {'letter': 'E', 'display': '+6 min', 'matrixS': 371, 'errorS': 11}] | PASS | ~/evidence/s21-along-run9/detour-comparison.json; matrix-*.json; gas-rows*.png |
+| c | Pick B becomes NEXT, NAVIGATING, camera following | along-added letter=B nextLat=33.058675 nextLng=-97.075695 navigating=true camera=FOLLOW_USER_WITH_BEARING | PASS | ~/evidence/s21-along-run9/picked-B-log.txt; picked-B.png |
+| d | Kroger sorted by detour; record puck and detour orders | {'query': 'Kroger', 'detour': ['W569154154'], 'puck': ['W569154154']} | PASS | ~/evidence/s21-along-run9/kroger.png; kroger-log.txt |
+| e | Server down disables all four chips with one-line reason | ['false', 'false', 'false', 'false'] | PASS | ~/evidence/s21-along-outage1/outage.xml; outage.png |
+| f | 0 app crashes; current APK geometry tests pass | 0 crashes; 3 tests OK | PASS | ~/evidence/s21-along-outage1/crash-final.txt; geometry-tests-final.txt |
+
+The receipt combines current APK a–d from run9 with focused outage1 for e/f. Original failed runs remain intact: early HTTP503 was traced to Photon rejecting the generic okhttp/5.3.2 identifier; requests now truthfully identify TruckNav. A2.5s transport timeout was shorter than observed Photon responses; it is now3.5s, while the unchanged first-draw deadline is4s. Harness row-text and disabled-state checks were corrected to inspect clickable parent containers. Run9 outage did not execute because PowerShell added CR to the shell argument; the focused rerun used Python subprocess arguments and passed. No product code changed between run9 and outage1.
+
+Kroger returned one live in-corridor OSM object; both recorded orders therefore contain that single ID. No claim that the live data demonstrated two different permutations. All searches use the same directional detour comparator.
+
+Valhalla stopped with a detached45s restart scheduled first; restored endpoint verified HTTP200. App route stopped, playback false. Tablet never operated; protected S19 files unchanged. Gas and outage screenshots inspected.
+
+APK: `/home/morton/trucknav-along/app/build/outputs/apk/debug/app-debug.apk`
+
+SHA256: `263bb0536b5eed155832998433c15c2e028fed79311a4ab2e93f68972d7557f0`
+
+Reproduce: lease build01 emulator5554, install this branch APK, then `bash docs/smoke/s21-along.sh <new-tag> astra-s22`. At OUTAGE_READY, after coordinating other agents, run `python3 docs/smoke/s21-valhalla-outage.py` on homebackup (pipe the file via the established SSH path). The full harness waits up to180s for that externally coordinated fault. Focused rerun: `S21_PHASE=outage bash docs/smoke/s21-along.sh <new-tag> astra-s22`; it proves e/f only.
+
+Merge/install owner: claude-nav. Branch started from origin/main d1eaa37; merge traffic-s22 Google removal first. Preserve S19 addStop signature/next-stop insertion and S23 control relocation. Merge version must exceed the latest worktrees; code131 was reserved when max was129.

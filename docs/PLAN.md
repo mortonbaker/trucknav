@@ -40,7 +40,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
 | S19 | Trip bar + stops (Google/Tesla) | M | assigned to astra-2 2026-09-20 20:10 (box in HANDOFF.md) | — |
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
-| S21 | Search along route | M | assigned to astra 2026-09-20 20:05 (box in HANDOFF.md) | — |
+| S21 | Search along route | M | READY along-s21, 0.34.1/code131 — a–f proven on build01 emulator; claude-nav merges/installs | SMOKE-TEST S21; ~/evidence/s21-along-final131/receipt.md |
 | S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
@@ -154,3 +154,5 @@ Research: pinned Ferrostar core 0.56.0 exposes remainingSteps, currentStepGeomet
 | f | entire run | crash buffer successfully collected, 0 com.morton.trucknav crashes | crash.txt, post-logcat.txt |
 
 Controls: Gas/Food/Coffee/Groceries chips ≥48dp, query field/clear, A–F row selection, loading/empty/unavailable strip, Back closes add-stop. Never operate the tablet. One agent per emulator, build pressure gate + flock. No protected S19 files changed. Every measurement remains FAIL/BLOCKED until observed; never infer pass from a build.
+
+S21 transport finding: identical reverse request on build01 returned503 with User-Agent okhttp/5.3.2,200 with an explicit TruckNav identifier (5.3.0 also returned200 during diagnosis). Requests now identify the actual app/version and repository; no browser impersonation. Runtime stage diagnostics located the response at Photon /reverse.
