@@ -8,7 +8,7 @@ S=${SERIAL:-emulator-5556}; export SERIAL=$S
 . ~/.claude/skills/slice-build/scripts/android.sh
 UI=$HOME/bin/ui.sh
 contract
-require "emulator has network (photon reachable)" adb -s $S shell ping -c1 -W3 photon.komoot.io
+require "emulator network VALIDATED (ICMP is not forwarded on every host)" sh -c "adb -s $S shell dumpsys connectivity | grep -q VALIDATED"
 adb -s $S emu geo fix -97.204973 33.080088 >/dev/null 2>&1
 app_restart 10; $UI $S tapx "Got it" >/dev/null 2>&1
 
@@ -48,6 +48,12 @@ row FM4 "Close → rail back ≤ 2000 ms and Books pane back" "${back} ms, Speed
 
 # FM5 favorites tile → full map → Start → navigating with rail back
 $UI $S tapx "Map" >/dev/null; sleep 1
+# precondition: a Home favorite (a fresh emulator has none) — seed it through the API
+if ! seen "Go: Home"; then
+  TOK=$(grep '^apiToken=' local.properties | cut -d= -f2-); adb -s $S forward tcp:18782 tcp:8782 >/dev/null
+  curl -s -m 6 -H "Authorization: Bearer $TOK" -H "Content-Type: application/json" -X POST http://127.0.0.1:18782/api/favorites -d '{"name":"Home","lat":33.080088,"lng":-97.204973,"kind":"home"}' >/dev/null
+  echo "-- seeded Home favorite via API: $(waitfor "Go: Home" 8)s"
+fi
 tap_until "Go: Home" "Start navigation" 10 >/dev/null; f5a=$(shot fm5-tile-preview.png); r5a=$(px $f5a 40 400)
 $UI $S tapx "Start navigation" >/dev/null; w5=$(poll 10 sh -c "adb -s $S logcat -d -s NavLog:* | grep -q 'state NAVIGATING'"); sleep 2
 f5=$(shot fm5-navigating.png); r5=$(px $f5 40 400)

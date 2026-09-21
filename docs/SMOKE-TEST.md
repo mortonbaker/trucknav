@@ -352,3 +352,13 @@ BLOCKED rather than promoting fixture results to live acceptance. The final
 live screenshot ≤5s, both actual card states, and Test key UI criteria still need
 their integrated UI harness extensions and real credentials. See
 `docs/S22-INTEGRATION.md` for control contracts and the exact nav/Settings hooks.
+
+### 2026-09-20 — 0.33.0 / 123 merge of traffic-s22 (claude-nav, build01 emulator-5554)
+
+| Check | Measured | Result |
+|---|---|---|
+| `cockpit-smoke.sh merge-s22c` (cold render: `mbgl-offline.db` set aside, restored after) | 13/13, 39 asset requests, route in 2 s, 0 crashes | PASS |
+| `docs/smoke/s23-fullmap.sh merge-s22` | FM0–FM4 PASS (rail hidden 1043 ms, back 943 ms); FM5 no Home favorite on this emulator | PASS / env |
+| Layers sheet | `Traffic` row present, content-desc `Traffic off` (keyless → silent) | PASS |
+| First build of the merge worktree | black map, 0 loopback requests — no `local.properties` in the worktree (demotiles style URL, API off) | harness caught it |
+
