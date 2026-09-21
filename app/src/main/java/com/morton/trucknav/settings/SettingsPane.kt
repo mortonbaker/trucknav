@@ -73,12 +73,8 @@ fun SettingsPane(modifier: Modifier = Modifier, onChooseMap: (String) -> Unit = 
                             "styleUrl" to "Map style URL", "absUrl" to "Audiobookshelf URL", "absUser" to "Audiobookshelf username",
                             "absPass" to "Audiobookshelf password", "venusHost" to "Venus MQTT host",
                             "venusPortalId" to "Venus portal ID", "relayHost" to "Relay host (blank = discover)").forEach { (key, label) -> SettingField(key, label) }
-                        // S22 traffic.TrafficSettings() is inserted here after that branch lands.
-                        SettingField("tomtomKey", "TomTom key")
-                        SettingField("googleMapsKey", "Google Maps key")
-                        Text("Traffic provider", fontSize = 24.sp)
-                        Choice("trafficProvider", listOf("off", "tomtom", "google"))
-                        Text("Google provides traffic ETA only; TomTom also provides flow tiles.", fontSize = 20.sp)
+                        // S22 (astra): TomTom key, provider tomtom|off, Test key. Google was dropped 2026-09-20 (ToS).
+                        com.morton.trucknav.traffic.TrafficSettings()
                     }
                     "Units" -> {
                         Text("Distance units", fontSize = 24.sp)

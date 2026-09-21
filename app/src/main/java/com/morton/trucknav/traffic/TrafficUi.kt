@@ -51,7 +51,7 @@ fun TrafficLayerToggle() {
     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Column(Modifier.weight(1f)) {
             Text("Traffic", color = Color.White, fontSize = 24.sp)
-            Text(when { provider == "google" -> "Google Maps: ETA only"; provider != "tomtom" -> "Choose a provider in Settings"; !online -> "Hidden offline"; else -> "TomTom flow and incidents" }, color = Color.White, fontSize = 16.sp)
+            Text(when { provider != "tomtom" -> "Choose a provider in Settings"; !online -> "Hidden offline"; else -> "TomTom flow and incidents" }, color = Color.White, fontSize = 16.sp)
         }
         Switch(checked = setting == "true", enabled = provider == "tomtom", onCheckedChange = Traffic::setOverlay,
             modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Traffic " + if (setting == "true") "on" else "off" })
@@ -65,14 +65,13 @@ fun TrafficSettings() {
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Traffic", fontSize = 24.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("off", "tomtom", "google").forEach { id ->
+            listOf("off", "tomtom").forEach { id ->
                 FilterChip(selected = (provider ?: "off") == id, onClick = { Settings.set("trafficProvider", id) },
-                    label = { Text(if (id == "google") "Google (ETA only)" else id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.heightIn(min = 48.dp))
+                    label = { Text(id.replaceFirstChar { it.uppercase() }) }, modifier = Modifier.heightIn(min = 48.dp))
             }
         }
         TrafficKeyField("tomtom", "TomTom", "tomtomKey")
-        TrafficKeyField("google", "Google Maps", "googleMapsKey")
-        Text("Your own API keys are required. Google supplies ETA only. Provider usage may be billed to your account.")
+        Text("Your own TomTom API key is required. Usage may be billed to your account.")
     }
 }
 
