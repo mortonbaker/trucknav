@@ -96,7 +96,7 @@ Done when: (a) empty `local.properties` → boots to a usable map, token generat
 ### S21 — Search along route (medium) — NEW
 What Google does: while navigating, "Search along route" with category chips (gas, food, coffee, groceries); results sit on/near the route and each shows the **detour time** ("+3 min"); tap → added as the next stop.
 Build: chips in the add-stop box while navigating; Photon has no corridor search, so sample the *remaining* route every ~10 km, query Photon with `lat/lon` bias (+ `osm_tag` for the category) per sample, dedupe, keep hits ≤ 2 mi from the route, rank by detour = matrix(now→hit) + matrix(hit→next waypoint) − matrix(now→next waypoint) via Valhalla `sources_to_targets`; letters A–F, "+N min" on each; pick → `addStop`. Free text works the same way (bias along the corridor instead of at the puck).
-Done when (emulator, `docs/emu-along.sh`): (a) on the home → Whole Foods route, chip "Gas" returns ≥ 3 hits all within 2 mi of the route (distance-to-polyline logged) in < 4 s; (b) each row shows "+N min" and N equals the matrix detour ±1 min; (c) picking B → `route stop-add` with B as the next stop, trip continues; (d) free text "Kroger" while navigating returns hits sorted by detour, not by distance from the puck; (e) offline (server down) → chips disabled with a reason in the strip, no crash.
+Done when (build01 emulator-5554, `docs/smoke/s21-along.sh`): (a) on the home → Whole Foods route, chip "Gas" returns ≥ 3 hits all within 2 mi of the route (distance-to-polyline logged) in < 4 s; (b) each row shows "+N min" and N equals the matrix detour ±1 min; (c) picking B → `route stop-add` with B as the next stop, trip continues; (d) free text "Kroger" while navigating returns hits sorted by detour, not by distance from the puck; (e) offline (server down) → chips disabled with a reason in the strip, no crash.
 
 ### S22 — Traffic: TomTom only (medium + key) — Astra; foundation merged 0.33.0
 Operator decision 2026-09-20 19:50: **TomTom only. Google dropped** (Google Maps Platform terms forbid using its data on a non-Google map; Astra flagged it, operator agreed). Remove the Google provider, its fixtures and the Settings option in the next S22 commit. Keys are BYOK: keys are entered in the Settings screen, or through the API/MCP (`PUT /api/settings {"tomtomKey": "…"}`, `set_setting("googleMapsKey", …)`), never in source or `local.properties`.
@@ -139,3 +139,18 @@ Evidence goes in `docs/SMOKE-TEST.md` (dated table, measured values, PASS/FAIL) 
 | Astra | S22 traffic (TomTom only) → S21 search along route; astra-2: S19; astra-3: S23 a–d | build01 `~/trucknav` (clone of GitHub main), branch `traffic-s22` | `emulator-5554` on **build01** (`~/bin/emu.sh`, profile `trucknav`) | never (no GPS/TTS needed); nav installs the merged build |
 
 Merge order: S20's `Settings` commit → S7 → S19 → S22 → S20 rest → S21 → S23. Every merge: `max(versionCode)+2`, `cockpit-smoke.sh` on an emulator, then the tablet under a lease.
+
+### S21 implementation contract — Astra, before code
+
+Research: pinned Ferrostar core 0.56.0 exposes remainingSteps, currentStepGeometryIndex and remainingWaypoints. Cut the current step at its geometry index; append subsequent steps, never search completed steps. Photon configured public server rejects category-only /api (HTTP400); /reverse with osm_tag=amenity:fuel, radius=8, limit=20 returned six stations in 0.56s. Use reverse per sample for categories and forward /api for text. See https://github.com/komoot/photon/blob/master/docs/api-v1.md and https://valhalla.github.io/valhalla/api/matrix/ . Matrix is directional: one-to-many now→hits+next and many-to-one hits→next, unreachable values excluded.
+
+| ID | Preconditions and automated action | Required observation / failure | Evidence |
+|---|---|---|---|
+| a | leased build01 5554, home→Whole Foods via POST /api/navigate; Add stop → Gas | ≥3 hits, each distance-to-segment ≤3218.688m, first rendered results <4000ms | gas.png, ui.xml, per-hit NavLog and paint time |
+| b | inspect Gas rows, recompute directional matrices | every row +N min, absolute difference from matrix detour ≤60s | independent matrix JSON and comparison |
+| c | pick letter B | route stop-add with B as next waypoint, NAVIGATING and camera following | before/after logs, screenshot, UI |
+| d | reset home→Whole Foods, free text Kroger | detour ascending; log detour order and puck-distance order | kroger.png, rows/logs |
+| e | route active, self-restoring docker stop valhalla on homebackup | all four chips disabled, one-line unavailable reason; no app crash; service restored | outage UI/logs and server state |
+| f | entire run | crash buffer successfully collected, 0 com.morton.trucknav crashes | crash.txt, post-logcat.txt |
+
+Controls: Gas/Food/Coffee/Groceries chips ≥48dp, query field/clear, A–F row selection, loading/empty/unavailable strip, Back closes add-stop. Never operate the tablet. One agent per emulator, build pressure gate + flock. No protected S19 files changed. Every measurement remains FAIL/BLOCKED until observed; never infer pass from a build.
