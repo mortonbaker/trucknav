@@ -3,7 +3,7 @@
 import json, math, os, re, subprocess, time, urllib.request, urllib.error, http.client, xml.etree.ElementTree as ET
 from pathlib import Path
 E=Path(os.environ['EVID']); ROOT=Path.cwd(); PKG='com.morton.trucknav'
-ADB=[str(Path.home()/'Android/Sdk/platform-tools/adb'),'-s','emulator-5554']
+ADB=[str(Path.home()/'Android/Sdk/platform-tools/adb'),'-s',os.environ.get('SERIAL','emulator-5554')]
 rows=[]; port=None
 
 def adb(*args):
@@ -102,7 +102,7 @@ try:
     settings=dict(line.split('=',1) for line in (ROOT/'local.properties').read_text().splitlines() if '=' in line)
     token=settings['apiToken'];valhalla=settings['valhallaUrl']
     port=adb('forward','tcp:0','tcp:8782').decode().strip()
-    assert 'versionCode=131 ' in shell('dumpsys','package',PKG), 'Unexpected build code'
+    EXPECTED=re.search(r'versionCode (\d+)',(ROOT/'app/build.gradle').read_text()).group(1); assert f'versionCode={EXPECTED} ' in shell('dumpsys','package',PKG), 'Unexpected build code'
     shell('am','force-stop',PKG)
     adb('emu','geo','fix','-97.204973','33.080088')
     shell('am','start','-W','-n',PKG+'/.MainActivity')
@@ -145,14 +145,15 @@ try:
         kroger_ui=ui('kroger');orders=events(text,'along-orders')[-1]
         assert any(n.get('content-desc','').startswith('Along result ') for n in kroger_ui.iter('node')), 'Kroger rows not visible'
         row('d','Kroger sorted by detour; record puck and detour orders',orders,bool(kroger) and all(x['detourS']<=y['detourS'] for x,y in zip(kroger,kroger[1:])), 'kroger.png; kroger-log.txt')
-    print('OUTAGE_READY: coordinate then run the self-restoring homebackup Valhalla stop now',flush=True)
-    disabled=wait(lambda:(t if find(t:=ui(),'Along status: Routing server unavailable — search disabled') is not None else None),180)
-    ui('outage')
-    parents={child:parent for parent in disabled.iter() for child in parent}
-    enabled=[parents[find(disabled,'Along '+x)].get('enabled') for x in ['Gas','Food','Coffee','Groceries']]
-    row('e','Server down disables all four chips with one-line reason',enabled,enabled==['false']*4,'outage.xml; outage.png')
-    wait(lambda:find(ui(),'Along status: Search along route') is not None or find(ui(),'Along status: No matches within 2 mi of your route') is not None,90)
-    print('SERVER_RECOVERED',flush=True)
+    if os.environ.get('S21_PHASE') != 'gate':   # merge gate runs a-d only; e/f come from the outage run
+        print('OUTAGE_READY: coordinate then run the self-restoring homebackup Valhalla stop now',flush=True)
+        disabled=wait(lambda:(t if find(t:=ui(),'Along status: Routing server unavailable — search disabled') is not None else None),180)
+        ui('outage')
+        parents={child:parent for parent in disabled.iter() for child in parent}
+        enabled=[parents[find(disabled,'Along '+x)].get('enabled') for x in ['Gas','Food','Coffee','Groceries']]
+        row('e','Server down disables all four chips with one-line reason',enabled,enabled==['false']*4,'outage.xml; outage.png')
+        wait(lambda:find(ui(),'Along status: Search along route') is not None or find(ui(),'Along status: No matches within 2 mi of your route') is not None,90)
+        print('SERVER_RECOVERED',flush=True)
 except Exception as e:
     row('exception','Smoke workflow completes',f'{type(e).__name__}: {e}',False,'run.log')
     import traceback;traceback.print_exc()
@@ -166,6 +167,6 @@ finally:
         print('restored: route stopped; playing='+str('state=PLAYING(3)' in shell('dumpsys','media_session')),flush=True)
     except Exception as e: row('restore','Restore succeeds',str(e),False,'run.log')
     (E/'rows.tsv').write_text('\n'.join('\t'.join(str(v).replace('\t',' ').replace('\n',' ') for v in r) for r in rows)+'\n')
-    for wanted in (['e'] if os.environ.get('S21_PHASE')=='outage' else ['a','b','c','d','e']):
+    for wanted in (['e'] if os.environ.get('S21_PHASE')=='outage' else ['a','b','c','d'] if os.environ.get('S21_PHASE')=='gate' else ['a','b','c','d','e']):
         if not any(r[0]==wanted for r in rows): print('NOT RUN',wanted,flush=True)
-raise SystemExit(1 if any(r[3]=='FAIL' for r in rows) or not all(any(r[0]==x for r in rows) for x in (['e'] if os.environ.get('S21_PHASE')=='outage' else ['a','b','c','d','e'])) else 0)
+raise SystemExit(1 if any(r[3]=='FAIL' for r in rows) or not all(any(r[0]==x for r in rows) for x in (['e'] if os.environ.get('S21_PHASE')=='outage' else ['a','b','c','d'] if os.environ.get('S21_PHASE')=='gate' else ['a','b','c','d','e'])) else 0)
