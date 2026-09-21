@@ -42,7 +42,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
 | S21 | Search along route | M | NEW (operator 2026-09-20) | — |
 | S22 | Traffic | M + key | NEW (operator 2026-09-20) | — |
-| S23 | Map control placement | S | NEW (operator 2026-09-20) | — |
+| S23 | Map control placement + full-map destination mode | S | (e) full-map DONE 0.32.0; (a)–(d) buttons OPEN | `docs/smoke/s23-fullmap.sh` run4 7/7 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
 Suggested split: **nav track** S19 → S21 → S23; **vehicle track** S20 (settings + API + vehicle upload) → S16 truck side when the truck is home; **Astra** S22 traffic research + S7 merge; **operator** S4 sign-in, S10, ESP32 OTA.

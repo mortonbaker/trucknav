@@ -288,6 +288,22 @@ Screens: `~/arrival-a2-card.png` (card over the map, puck at Whole Foods), `~/ad
 
 Open from S17: night-mode field switch; `docs/emu-favorites.sh` still hard-codes the Whole Foods result label; the "Add stop" search card covers the Layers/Add-stop buttons while open (cosmetic).
 
+## S20 Settings contract — 2026-09-20, 0.31.1 / code 119
+
+Separate merge 05f6151 (contract 4ad1978). Main debug build passed. Emulator-5554 cockpit smoke **13/13**, 44 local tile requests, search 1 s, navigation first attempt, 0 crashes, playback stopped. Evidence: ~/evidence/cockpit-s20-contract-main. Settings API read/write, masking, provider validation, 401 authentication and request log redaction passed. No tablet install for this prerequisite.
+### 2026-09-20 — 0.32.0 S23e full-map destination mode (emulator-5556, `docs/smoke/s23-fullmap.sh` run4, evidence `~/evidence/s23-fullmap-run4/`)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| FM0 | baseline: rail column and Books pane visible | rail=10141a pane=252f3b | PASS | fm0-books.png |
+| FM1 | search focus → rail hidden ≤ 2000 ms | 1181 ms | PASS | fm1-full.png |
+| FM2 | power strip + pane gone: (1100,780) is map, not chrome (#0b0e12/#10141a) | px=f2eff7 | PASS | fm1-full.png |
+| FM3 | result → preview sheet, rail still hidden | sheet after 0s rail=1f5f8b | PASS | fm3-preview.png |
+| FM4 | Close → rail back ≤ 2000 ms and Books pane back | 483 ms, Speed nodes=1 | PASS | fm4-back.png |
+| FM5 | tile → full map; Start → NAVIGATING with rail back | tile rail=1f5f8b nav after 4s rail=10141a | PASS | fm5-navigating.png |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Run1 had two harness false-fails (probe hit the Recents panel; "Speed" text is "Speed  1.0×") and one environmental fail (emulator Wi-Fi was off at 18:43 — someone else toggled it; the harness now requires photon reachable before it starts).
 
 ## S22 — Traffic foundation, 2026-09-20 (Astra; build01 emulator-5554)
 

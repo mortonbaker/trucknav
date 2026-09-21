@@ -112,23 +112,27 @@ fun CockpitScreen() {
         Pane.Apps -> { m -> AppsPane(m.padding(8.dp), onSelect = { pane = it }) }
     }
 
+    // Entering/editing a destination needs the whole screen (S23e): no rail,
+    // no power strip, no side pane until Start or Close.
+    val fullMap by AppModule.viewModel.fullMap.collectAsState()
+    val sidePane = if (fullMap) null else side
     Column(Modifier.fillMaxSize().background(Color(0xFF0b0e12))) {
         StatusStrip()
         if (landscape) {
             Row(Modifier.fillMaxSize()) {
-                rail(Modifier.width(88.dp).fillMaxHeight())
-                Column(Modifier.weight(if (side == null) 1f else 0.6f).fillMaxHeight()) {
+                if (!fullMap) rail(Modifier.width(88.dp).fillMaxHeight())
+                Column(Modifier.weight(if (sidePane == null) 1f else 0.6f).fillMaxHeight()) {
                     Box(Modifier.weight(1f).fillMaxWidth()) { DemoNavigationScene() }
-                    PowerStrip(venus, relay)
+                    if (!fullMap) PowerStrip(venus, relay)
                 }
-                side?.let { it(Modifier.weight(0.4f).fillMaxHeight()) }
+                sidePane?.let { it(Modifier.weight(0.4f).fillMaxHeight()) }
             }
         } else {
             Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(if (side == null) 1f else 0.5f).fillMaxWidth()) { DemoNavigationScene() }
-                PowerStrip(venus, relay)
-                side?.let { it(Modifier.weight(0.5f).fillMaxWidth()) }
-                rail(Modifier.fillMaxWidth().height(88.dp))
+                Box(Modifier.weight(if (sidePane == null) 1f else 0.5f).fillMaxWidth()) { DemoNavigationScene() }
+                if (!fullMap) PowerStrip(venus, relay)
+                sidePane?.let { it(Modifier.weight(0.5f).fillMaxWidth()) }
+                if (!fullMap) rail(Modifier.fillMaxWidth().height(88.dp))
             }
         }
     }

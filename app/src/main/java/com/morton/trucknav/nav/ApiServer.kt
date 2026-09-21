@@ -5,6 +5,9 @@ import android.os.Looper
 import android.util.Log
 import com.morton.trucknav.AppModule
 import com.morton.trucknav.BuildConfig
+import com.morton.trucknav.settings.Settings
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import com.stadiamaps.ferrostar.core.isNavigating
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -50,19 +53,53 @@ class ApiServer(val port: Int = 8782) {
 
     private fun handle(sock: Socket) = sock.use { c ->
         c.soTimeout = 10_000
-        val r = BufferedReader(InputStreamReader(c.getInputStream()))
-        val req = r.readLine() ?: return
-        var auth = ""; var len = 0
-        while (true) { val l = r.readLine() ?: break; if (l.isEmpty()) break; if (l.startsWith("Authorization:", true)) auth = l.substringAfter(':').trim(); if (l.startsWith("Content-Length:", true)) len = l.substringAfter(':').trim().toIntOrNull() ?: 0 }
-        val body = if (len > 0) CharArray(len).let { var n = 0; while (n < len) { val k = r.read(it, n, len - n); if (k < 0) break; n += k }; String(it, 0, n) } else ""
+        val input = c.getInputStream().buffered()
         val out = c.getOutputStream()
-        fun reply(code: Int, obj: Any) { val b = (if (obj is String) obj else json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), obj as kotlinx.serialization.json.JsonElement)).toByteArray(); out.write("HTTP/1.1 $code OK\r\nContent-Type: application/json\r\nContent-Length: ${b.size}\r\nConnection: close\r\n\r\n".toByteArray()); out.write(b); out.flush() }
-        val (method, rawPath) = req.split(' ').let { it[0] to it.getOrElse(1) { "/" } }
-        val path = rawPath.substringBefore('?')
-        if (auth != "Bearer $token") { reply(401, buildJsonObject { put("error", "unauthorized") }); return }
-        NavLog.log("api", "$method $path ${body.take(120)}")
+        fun reply(code: Int, obj: Any) { val b = (if (obj is String) obj else json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), obj as kotlinx.serialization.json.JsonElement)).toByteArray(); out.write("HTTP/1.1 $code Response\r\nContent-Type: application/json\r\nContent-Length: ${b.size}\r\nConnection: close\r\n\r\n".toByteArray()); out.write(b); out.flush() }
+        fun line(): String {
+            val b = java.io.ByteArrayOutputStream()
+            while (b.size() < 8192) {
+                val v = input.read()
+                require(v >= 0) { "Incomplete HTTP header" }
+                if (v == 10) return b.toString("ISO-8859-1").trimEnd('\r')
+                b.write(v)
+            }
+            throw IllegalArgumentException("Header too large")
+        }
+        val req = line().split(' ')
+        val method = req[0]
+        val path = req.getOrElse(1) { "/" }.substringBefore('?')
+        val headers = mutableMapOf<String, String>()
+        var headerBytes = 0
+        while (true) {
+            val l = line()
+            if (l.isEmpty()) break
+            headerBytes += l.length
+            if (headerBytes > 32768) { reply(431, buildJsonObject { put("error", "Headers too large") }); return }
+            headers[l.substringBefore(':').lowercase()] = l.substringAfter(':').trim()
+        }
+        if (headers["authorization"] != "Bearer $token") { reply(401, buildJsonObject { put("error", "unauthorized") }); return }
+        if (headers.containsKey("transfer-encoding")) { reply(400, buildJsonObject { put("error", "Content-Length required") }); return }
+        val len = headers["content-length"]?.toIntOrNull() ?: 0
+        val limit = if (path == "/api/vehicle") 2 * 1024 * 1024 else 65536
+        if (len < 0 || len > limit) { reply(413, buildJsonObject { put("error", "Body too large") }); return }
+        if (headers["expect"].equals("100-continue", true)) { out.write("HTTP/1.1 100 Continue\r\n\r\n".toByteArray()); out.flush() }
+        val bytes = input.readNBytes(len)
+        if (bytes.size != len) { reply(400, buildJsonObject { put("error", "Incomplete body") }); return }
+        val body = bytes.toString(Charsets.UTF_8)
+        NavLog.log("api", "$method $path")
         try {
             when {
+                method == "GET" && path == "/api/settings" -> reply(200, buildJsonObject { Settings.snapshot().forEach { (k, v) -> put(k, v) } })
+                method == "PUT" && path == "/api/settings" -> {
+                    val obj = Json.parseToJsonElement(body).jsonObject
+                    val changes = obj.mapValues { (_, v) ->
+                        require(v == JsonNull || v is JsonPrimitive && v.isString) { "Settings values must be strings or null" }
+                        if (v == JsonNull) null else v.jsonPrimitive.content
+                    }
+                    Settings.update(changes)
+                    reply(200, buildJsonObject { Settings.snapshot().forEach { (k, v) -> put(k, v) } })
+                }
                 method == "GET" && path == "/api/state" -> reply(200, state())
                 method == "GET" && path == "/api/favorites" -> reply(200, buildJsonArray { Favorites.all.value.forEach { add(fav(it)) } })
                 method == "GET" && path == "/api/recent" -> reply(200, buildJsonArray { Favorites.recent.value.forEach { add(buildJsonObject { put("name", it.name); put("lat", it.lat); put("lng", it.lng); put("at", it.at) }) } })
@@ -89,7 +126,7 @@ class ApiServer(val port: Int = 8782) {
                 method == "POST" && path == "/api/stop" -> { main.post { AppModule.viewModel.stopNavigation() }; reply(200, buildJsonObject { put("ok", true) }) }
                 else -> reply(404, buildJsonObject { put("error", "no such route") })
             }
-        } catch (e: Exception) { reply(400, buildJsonObject { put("error", e.toString()) }) }
+        } catch (e: Exception) { reply(400, buildJsonObject { put("error", "Invalid request") }) }
     }
 
     private fun fav(f: Favorite): JsonObject = buildJsonObject { put("id", f.id); put("name", f.name); put("lat", f.lat); put("lng", f.lng); put("kind", f.kind) }

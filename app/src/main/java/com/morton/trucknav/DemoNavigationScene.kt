@@ -193,7 +193,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
   }
 
   // Preview: fit the chosen candidate and the puck under the sheet.
-  LaunchedEffect(sceneState.preview, destinationPreviewTopPaddingPx) {
+  LaunchedEffect(sceneState.preview, destinationPreviewTopPaddingPx, mapSize) {
     sceneState.preview.getOrNull(sceneState.previewSelected) ?: return@LaunchedEffect
     if (mapSize.width == 0) return@LaunchedEffect
     // Every candidate must be on screen: the driver picks by the letters on the map.
@@ -201,7 +201,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
     val mapW = with(density) { mapSize.width.toDp() }; val mapH = with(density) { mapSize.height.toDp() }
     val sheet = with(density) { sceneState.destinationSheetHeightPx.toDp() }
     val topPad = maxOf(100.dp, with(density) { destinationPreviewTopPaddingPx.toDp() } + 16.dp)   // clear the search box + tiles
-    val pad = if (landscape) PaddingValues(start = 24.dp, top = topPad, end = mapW * 0.46f + 16.dp, bottom = 24.dp)
+    val pad = if (landscape) PaddingValues(start = 56.dp, top = topPad, end = mapW * 0.46f + 16.dp, bottom = 40.dp)   // puck is 84 dp wide, badges hang 24 dp below
               else PaddingValues(start = 24.dp, top = topPad, end = 24.dp, bottom = minOf(sheet + 16.dp, mapH * 0.6f))
     navigationMapState.cameraMode = com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode.FREE
     navigationMapState.cameraState.animateTo(fitCamera(pts, mapW, mapH, pad), duration = kotlin.time.Duration.parse("600ms"))

@@ -38,12 +38,12 @@ object AppModule {
     val assets: LocalAssetServer by lazy { LocalAssetServer(appContext.getExternalFilesDir(null)!!) }
     fun init(context: Context) {
         appContext = context.applicationContext
+        com.morton.trucknav.settings.Settings.init(appContext)
         com.morton.trucknav.nav.NavLog.init(appContext)
         com.morton.trucknav.nav.Favorites.init(appContext)
         com.morton.trucknav.nav.NavPrefs.gate = voiceGate
         com.morton.trucknav.nav.NavPrefs.init(appContext)
         com.morton.trucknav.nav.NightMode.start()
-        com.morton.trucknav.settings.Settings.init(appContext)
         api.start()
         MapStyles.init(appContext)
         assets.start()

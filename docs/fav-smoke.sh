@@ -9,7 +9,7 @@ declare -a ROWS; row() { ROWS+=("| $1 | $2 | $3 | $4 | $5 |"); echo "[$4] $1: $3
 sh() { adb -s $S shell "$@"; }
 dump() { sh "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml 2>/dev/null"; }
 has() { dump | grep -cE "(text|content-desc)=\"$1\""; }
-bounds() { dump | grep -oE "<node[^>]*content-desc=\"$1\"[^>]*>" | head -1 | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | grep -oE '[0-9]+' | tr '\n' ' '; }
+bounds() { dump | grep -oE "<node[^>]*(content-desc|text)=\"$1\"[^>]*>" | head -1 | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | grep -oE '[0-9]+' | tr '\n' ' '; }
 tapd() { set -- $(bounds "$1"); [ -z "$1" ] && return 1; sh input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 )); }
 holdd() { set -- $(bounds "$1"); [ -z "$1" ] && return 1; x=$(( ($1+$3)/2 )); y=$(( ($2+$4)/2 )); sh input swipe $x $y $x $y 900; }
 waitfor() { local t=0; while [ $t -lt $2 ]; do [ "$(has "$1")" -ge 1 ] && { echo $t; return 0; }; sleep 1; t=$((t+1)); done; echo none; return 1; }
@@ -23,6 +23,7 @@ sh am force-stop $P; sleep 1; sh am start -n $P/.MainActivity >/dev/null; sleep 
 [ "$(has "Got it")" -ge 1 ] && tapd "Got it"; sleep 1
 # start from a known state: no panel, no keyboard, no focus in the field
 [ "$(has "Close destinations")" -ge 1 ] && tapd "Close destinations"
+[ "$(has "Start navigation")" -ge 1 ] && tapd "Close"          # a route preview left open
 # the map alone on screen: a pane open beside it narrows the tile column (that layout is checked separately)
 ~/bin/ui.sh $S tapx Map >/dev/null 2>&1
 sh dumpsys input_method | grep -q "mInputShown=true" && sh input keyevent KEYCODE_BACK; sleep 1
@@ -66,7 +67,7 @@ tapd "Close destinations"; sleep 1; tapd "Go: Work" || tapd "Go: Home"; pv=$(wai
 tapd "Start navigation"; nav=$(waitfor "End Navigation" 15); shot go
 [ "$pv" != none ] && [ "$nav" != none ] && a=PASS || a=FAIL
 row "5 tile go" "tile -> route preview within 12 s -> Start -> End Navigation within 15 s (S17.7 flow)" "preview ${pv}s, navigating ${nav}s" "$a" "preview.png go.png"
-tapd "End Navigation"; sleep 2
+tapd "End Navigation"; sleep 2; [ "$(has "Start navigation")" -ge 1 ] && tapd "Close"; sleep 1
 
 # 6 focused empty search shows Recents; typing hides the panel
 tapd "Search field"; sleep 1.5; p=$(has "Destinations panel"); sh input text "Denton"; sleep 5; p2=$(has "Destinations panel"); shot typing
