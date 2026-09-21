@@ -124,7 +124,7 @@ Default: prove it on the emulator, then confirm the hardware-dependent part on t
   tablet's radio at all when the test allows it. Cuts must self-restore from the tablet (`svc wifi enable`
   in the same nohup'd script) and be as short as the criterion needs.
 - **Do not play the operator's books.** Tests use the designated test book only
-  (`8c5b4b84…` Counter-Elites, 4 tracks); never open anything from "Continue".
+  (`8c5b4b84…` Counter-Elites, 4 tracks; for 30-minute soaks `c09674da…` How This Ends, 34 min, unlistened); never open anything from "Continue".
   Abort if anything is already playing when the run starts (the operator may be listening).
   Leave the player paused at the end, confirm with `dumpsys media_session`, and say so in the receipt.
 - Playback that a test starts is the test's responsibility until it is stopped. No "leave it running
