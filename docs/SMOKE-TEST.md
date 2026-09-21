@@ -579,3 +579,16 @@ SHA256: `263bb0536b5eed155832998433c15c2e028fed79311a4ab2e93f68972d7557f0`
 Reproduce: lease build01 emulator5554, install this branch APK, then `bash docs/smoke/s21-along.sh <new-tag> astra-s22`. At OUTAGE_READY, after coordinating other agents, run `python3 docs/smoke/s21-valhalla-outage.py` on homebackup (pipe the file via the established SSH path). The full harness waits up to180s for that externally coordinated fault. Focused rerun: `S21_PHASE=outage bash docs/smoke/s21-along.sh <new-tag> astra-s22`; it proves e/f only.
 
 Merge/install owner: claude-nav. Branch started from origin/main d1eaa37; merge traffic-s22 Google removal first. Preserve S19 addStop signature/next-stop insertion and S23 control relocation. Merge version must exceed the latest worktrees; code131 was reserved when max was129.
+
+### 2026-09-20 — 0.37.0 / 141 merge of along-s21 (claude-nav, build01 emulator-5558)
+
+astra: S21 search along route — Gas/Food/Coffee/Groceries chips in the add-stop box, corridor-biased free text, hits within 2 mi of the remaining route with matrix detour minutes, pick = next stop; chips disabled with a reason when the routing server is down. Gate: cockpit 13/13, s23-fullmap 7/7, s21-along.sh gate phase a-d PASS (Gas 5 hits <=2742 m, first paint 2884 ms, detour error <=28 s); e/f from astra's outage receipt ~/evidence/s21-along-outage1. Harness made SERIAL-overridable with a gate phase that does not stop the shared Valhalla.
+
+| Check | Measured | Result |
+|---|---|---|
+| cockpit-smoke (cold render) | 13/13, 87 asset requests, route 1 s, 0 crashes | PASS |
+| s23-fullmap | 7/7 (rail hidden 1099 ms, back 935 ms, tile→NAVIGATING 5 s) | PASS |
+| first gate attempt | 3a Start failed — Valhalla on homebackup was stopped 21:15:54–21:16:30 by astra's S21 (e) offline test; environmental, rerun passed | note |
+
+Evidence: build01:~/evidence/cockpit-merge-s21a/, ~/evidence/s23-fullmap-merge-s21b/, ~/evidence/s21-along-merge-s21c/
+
