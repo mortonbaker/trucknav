@@ -14,7 +14,7 @@ data class TrafficEta(val duration: Duration, val provider: String, val measured
     fun fresh(now: Long) = now >= measuredAt && now - measuredAt < 600_000L
     val minutes: Long get() = ceil(duration.seconds / 60.0).toLong()
     val label: String get() = "· $minutes min w/ traffic"
-    val attribution: String get() = if (provider == "google") "Google Maps" else "TomTom"
+    val attribution: String get() = "TomTom"
 }
 
 interface TrafficProvider {

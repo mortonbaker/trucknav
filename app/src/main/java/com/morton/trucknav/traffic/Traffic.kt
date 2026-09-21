@@ -27,7 +27,7 @@ object Traffic {
             NavLog.log("traffic-request", "kind=$kind")
             chain.proceed(chain.request())
         }.build()
-    private val providers by lazy { mapOf("tomtom" to TomTomTraffic(client), "google" to GoogleTraffic(client)) }
+    private val providers by lazy { mapOf("tomtom" to TomTomTraffic(client)) }
     private val _online = MutableStateFlow(false)
     val online: StateFlow<Boolean> = _online.asStateFlow()
     private val _generation = MutableStateFlow(0L)
@@ -69,7 +69,7 @@ object Traffic {
         })
         updateOnline()
         scope.launch {
-            combine(Settings.flow("trafficProvider"), Settings.flow("tomtomKey"), Settings.flow("googleMapsKey"), Settings.flow("trafficLayer"), online) { p, t, g, l, o -> listOf<Any?>(p,t,g,l,o) }
+            combine(Settings.flow("trafficProvider"), Settings.flow("tomtomKey"), Settings.flow("trafficLayer"), online) { p, t, l, o -> listOf<Any?>(p,t,l,o) }
                 .collect { config ->
                     synchronized(this@Traffic) {
                         if (config != lastConfig) {
