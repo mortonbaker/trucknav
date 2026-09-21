@@ -16,7 +16,7 @@
 # at intermediate stops and card auto-clears after 10s.
 set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 2
-SERIAL=emulator-5556
+SERIAL=${SERIAL:-emulator-5556}; export EMU_PROFILE=${EMU_PROFILE:-s6}
 [ "$(hostname)" = build01 ] || exit 2
 SLICE=s19-stops PKG=com.morton.trucknav AGENT=astra-2
 . ~/.claude/skills/slice-build/scripts/smoke-lib.sh
@@ -152,7 +152,7 @@ try:
         return "bar="+str(actual)+" Valhalla="+str(expected)+" errors="+str(errors)
     row("e","leg meters/seconds within 5% of Valhalla",e,"valhalla.json comparison.json numbers.log")
     before=log();save("before-drive.log",before)
-    drive=subprocess.Popen([str(pathlib.Path.home()/"bin/emu.sh"),"drive","s6",str(ev/"drive.txt"),"3"],stdout=(ev/"drive.log").open("w"),stderr=subprocess.STDOUT)
+    drive=subprocess.Popen([str(pathlib.Path.home()/"bin/emu.sh"),"drive",os.environ.get("EMU_PROFILE","s6"),str(ev/"drive.txt"),"3"],stdout=(ev/"drive.log").open("w"),stderr=subprocess.STDOUT)
     def c():
         poll(lambda:"stop-passed S19 Stop 1" in log(),max(90,len(drivepoints)*3+30))
         poll(lambda:'trip-bar next="S19 Stop 2"' in log(),2)
