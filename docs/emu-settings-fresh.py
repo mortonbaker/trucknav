@@ -18,10 +18,17 @@ assert len(settings["apiToken"])==64 and all(c in "0123456789abcdef" for c in se
 assert settings["valhallaUrl"]==""
 assert settings["absPass"]==""
 assert settings.get("setupComplete") is None
-adb("shell","uiautomator","dump","/sdcard/s20-first.xml")
-xml=adb("shell","cat","/sdcard/s20-first.xml")
-assert b"Set up your truck" in xml
-assert b"Continue to map" in xml
+for _ in range(20):
+    try:
+        adb("shell","uiautomator","dump","/sdcard/s20-first.xml")
+        xml=adb("shell","cat","/sdcard/s20-first.xml")
+        if b"Viewing full screen" in xml:
+            subprocess.run([str(Path.home()/"bin/ui.sh"),"emulator-5554","tapx","Got it"],check=True,stdout=subprocess.DEVNULL)
+            continue
+        if b"Set up your truck" in xml and b"Continue to map" in xml: break
+    except subprocess.CalledProcessError: pass
+    time.sleep(.5)
+else: raise RuntimeError("First-run setup UI did not become ready")
 (E/"first-run.xml").write_bytes(xml)
 # Default QR is hidden, so this screenshot contains no credential.
 (E/"first-run.png").write_bytes(adb("exec-out","screencap","-p"))

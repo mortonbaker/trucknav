@@ -24,16 +24,21 @@ wait_stopped() {
   for i in $(seq 1 30); do adb -s "$S" get-state >/dev/null 2>&1 || return 0; sleep 1; done
   echo "Emulator failed to stop"; return 1
 }
+kvm_ready() {
+  # This host recreates /dev/kvm after the last VM exits; restore only this operator's ACL.
+  [ -w /dev/kvm ] || sudo -n setfacl -m u:"$(id -un)":rw /dev/kvm
+}
 restore() {
   ~/bin/emu.sh stop "$PROFILE"
   wait_stopped || return 1
-  ~/bin/pressure.sh --stop-idle --need 4G && ~/bin/emu.sh start trucknav
+  kvm_ready && ~/bin/pressure.sh --stop-idle --need 4G && ~/bin/emu.sh start trucknav
 }
 ~/bin/emu.sh stop trucknav
 wait_stopped
 trap restore EXIT
 ~/bin/emu.sh create "$PROFILE"
 ~/bin/pressure.sh --stop-idle --need 4G || exit 2
+kvm_ready
 ~/bin/emu.sh start "$PROFILE"
 docs/tablet-lock.sh "$S" acquire claude-vehicle-s20 40 "S20 fresh-profile acceptance" || exit 2
 ~/bin/emu.sh install "$PROFILE" "$APK"

@@ -106,21 +106,52 @@ class S20SettingsTest {
             for (i in 0 until node.childCount) find(node.getChild(i), label, description)?.let { return it }
             return null
         }
-        fun lookup(label: String) = find(instrumentation.uiAutomation.rootInActiveWindow, label, true) ?: find(instrumentation.uiAutomation.rootInActiveWindow, label, false)
+        fun lookup(label: String): android.view.accessibility.AccessibilityNodeInfo? {
+            instrumentation.uiAutomation.clearCache()
+            val root = instrumentation.uiAutomation.rootInActiveWindow
+            return find(root, label, true) ?: find(root, label, false)
+        }
         fun wait(label: String): android.view.accessibility.AccessibilityNodeInfo {
             repeat(60) { lookup(label)?.let { return it }; android.os.SystemClock.sleep(100) }
             error("Control missing: " + label)
         }
         fun tap(label: String) {
             var node = wait(label)
+            node.performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
+            android.os.SystemClock.sleep(200)
+            node = wait(label)
             while (!node.isClickable && node.parent != null) node = node.parent
-            check(node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) { "Cannot click " + label }
+            val bounds = android.graphics.Rect()
+            node.getBoundsInScreen(bounds)
+            check(!bounds.isEmpty) { "Control is off screen: " + label }
+            println("S20 tap " + label + " bounds=" + bounds.toShortString())
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}")).use { it.readBytes() }
             instrumentation.waitForIdleSync()
             android.os.SystemClock.sleep(250)
         }
-        android.os.SystemClock.sleep(2000)
-        lookup("Continue to map")?.let { tap("Continue to map") }
-        lookup("Got it")?.let { tap("Got it") }
+        fun scrollTo(label: String) {
+            fun content(node: android.view.accessibility.AccessibilityNodeInfo?): android.view.accessibility.AccessibilityNodeInfo? {
+                if (node == null) return null
+                val r = android.graphics.Rect(); node.getBoundsInScreen(r)
+                if (node.isScrollable && r.left > context.resources.displayMetrics.widthPixels / 2 && r.height() > 200) return node
+                for (i in 0 until node.childCount) content(node.getChild(i))?.let { return it }
+                return null
+            }
+            repeat(10) {
+                if (lookup(label) != null) return
+                val node = content(instrumentation.uiAutomation.rootInActiveWindow) ?: error("Settings content is not scrollable")
+                val r = android.graphics.Rect(); node.getBoundsInScreen(r)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("input swipe ${r.centerX()} ${r.bottom - 50} ${r.centerX()} ${r.top + 50} 400")).use { it.readBytes() }
+                android.os.SystemClock.sleep(400)
+            }
+            error("Settings control missing after scrolling: " + label)
+        }
+        val startupDeadline = android.os.SystemClock.elapsedRealtime() + 30000
+        while (lookup("Settings") == null && android.os.SystemClock.elapsedRealtime() < startupDeadline) {
+            lookup("Continue to map")?.let { tap("Continue to map") }
+            lookup("Got it")?.let { tap("Got it") }
+            android.os.SystemClock.sleep(100)
+        }
         tap("Settings")
         wait("Places")
         val unitsBefore = Settings.get("units")
@@ -129,21 +160,36 @@ class S20SettingsTest {
         try {
             fun section(label: String) {
                 repeat(5) {
-                    if (lookup(label) != null) { tap(label); return }
-                    wait("Settings sections").performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
-                    android.os.SystemClock.sleep(200)
+                    var candidate = lookup(label)
+                    while (candidate != null && !candidate.isClickable && candidate.parent != null) candidate = candidate.parent
+                    val bounds = android.graphics.Rect()
+                    candidate?.getBoundsInScreen(bounds)
+                    println("S20 section " + label + " bounds=" + bounds.toShortString() + " displayWidth=" + context.resources.displayMetrics.widthPixels)
+                    if (candidate != null && bounds.width() > 0 && bounds.right < context.resources.displayMetrics.widthPixels - 10) { tap(label); return }
+                    val row = android.graphics.Rect()
+                    wait("Settings sections").getBoundsInScreen(row)
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("input swipe ${row.right - 35} ${row.centerY()} ${row.left + 35} ${row.centerY()} 400")).use { it.readBytes() }
+                    android.os.SystemClock.sleep(500)
+                }
+                if (label == "Units") java.io.FileOutputStream(File(context.getExternalFilesDir(null), "s20-units-missing.png")).use { out ->
+                    instrumentation.uiAutomation.takeScreenshot()!!.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
                 error("Section missing: " + label)
             }
             section("Units")
+            java.io.FileOutputStream(File(context.getExternalFilesDir(null), "s20-units-test.png")).use { out ->
+                instrumentation.uiAutomation.takeScreenshot()!!.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
             tap("metric")
             assertEquals("metric", Settings.get("units"))
             section("Voice")
             val before = Settings.get("autoNight") != "false"
+            scrollTo("Auto night")
             tap("Auto night")
             assertEquals(!before, Settings.get("autoNight") != "false")
             section("API")
             tap("Show token and QR")
+            scrollTo("API token QR")
             wait("API token QR").performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
             android.os.SystemClock.sleep(300)
             val rect = android.graphics.Rect()
