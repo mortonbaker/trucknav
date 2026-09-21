@@ -382,6 +382,27 @@ Initial migration probe read before Settings initialization; corrected to poll, 
 
 | 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
 | 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 73 requests | PASS | map.png |
+
+## s19-stops — 2026-09-20 20:49:46, version 0.34.0-s19, agent astra-2, tag run5 (166s)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| a | next-stop bar; 3 ascending ETAs | 3 rows; displayed ETA minutes=[1248, 1250, 1252] | PASS | bar.xml bar.png list.xml list.png |
+| b | pins 1,2 and destination flag | 2 numbered features; 1 flag | PASS | pins.png pins.log |
+| e | leg meters/seconds within 5% of Valhalla | bar=[1251.3604548755509, 56.39569670021868] Valhalla=[1253.0, 56.485] errors=[0.0013084957098556378, 0.0015810091135933574] | PASS | valhalla.json comparison.json numbers.log |
+| c | arrival once and next stop within 2000ms | flip=211ms; arrival synthesis=1; no deviation-handler | PASS | arrival.log arrival.xml arrival.png drive.log |
+| c-linger | intermediate card auto-clears; navigation continues | card cleared; observed after 7405ms; navigation continues | PASS | arrival-cleared.xml arrival-cleared.png |
+| d | remove preserves navigation; updates bar/pins | route replaced; destination next; 0 stops + flag; NAVIGATING | PASS | remove.log removed.xml removed.png |
+| restore | idle; rotation/recents/foreground restored; playback paused | verified; network unchanged | PASS | restored-state.json restored-media.txt |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Evidence: `/home/morton/evidence/s19-stops-run5`
+
+
+## S19 final cockpit regression — code127, 2026-09-20, astra-2
+
+| 1 boot | HOME resolves to com.morton.trucknav/.MainActivity and it is foreground 8 s after HOME | home=com.morton.trucknav/.MainActivity fg=com.morton.trucknav | PASS | - |
+| 2 map render | >= 10 asset/tile requests answered by the loopback server after cold start | 57 requests | PASS | map.png |
 | 3a route | results within 15 s, sheet within 10 s, End Navigation within 16 s of Start | results 2s sheet 0s end-nav 1/0ss | PASS | route.png |
 | 3b end | End Navigation leaves navigation (button gone within 3 s) | end-nav=0 | PASS | - |
 | 4 power strip | all 8 cells present (SOC Batt Solar Alt Load Net Link Starlink); Link state is informational | 8 cells, link=text="--" | PASS | map.png |
@@ -507,3 +528,15 @@ Vehicle track (Codex): S20 usable by others — Settings pane (Places/Vehicle/Se
 
 Evidence: build01:~/evidence/cockpit-merge-s20b/, ~/evidence/s23-fullmap-merge-s20b/
 
+Evidence: build01 ~/evidence/cockpit-s19-final/. 13/13 PASS, 0 crashes, Map foreground, playback paused.
+
+
+## S19 final arrival regression — code127, 2026-09-20, astra-2
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| final-arrival | final card then actual auto-stop at 10s | one card; actual stop after 10004ms; reroute events=1 | PASS | final-card.png final-ended.png arrival.log |
+| crash | zero package crashes | 0 | PASS | crash.txt |
+| restore | recents/location restored; navigation idle | verified | PASS | recent-before.json |
+
+Evidence: build01 ~/evidence/s19-stops-final-arrival2/. Actual auto-stop 10004ms. One auxiliary-drive reroute is retained as measured; primary S19 run5 had zero deviation-handler lines. Portrait passed in ~/evidence/s19-stops-final-arrival/portrait.png (opened visually).
