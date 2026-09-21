@@ -38,7 +38,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S16 | Relay board on every network + Pi flow | S | app side DONE 0.21.0; truck side STAGED (ESP32 OTA when battery healthy, operator present) | `s16-pi-relay.sh` |
 | S17 | Navigation, finished (11 parts) | M–L | DONE 0.28.0; + preview-first favorites and A/B/C badges 0.30.0 | SMOKE-TEST "S17.1–S17.11" |
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
-| S19 | Trip bar + stops (Google/Tesla) | M | assigned to astra-2 2026-09-20 20:10 (box in HANDOFF.md) | — |
+| S19 | Trip bar + stops (Google/Tesla) | M | READY 0.34.0-s19 / 127 (astra-2); awaiting claude-nav merge | s19-stops.sh run5: 8/8, build01 evidence; SMOKE-TEST S19 |
 | S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
 | S21 | Search along route | M | assigned to astra 2026-09-20 20:05 (box in HANDOFF.md) | — |
 | S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |

@@ -186,3 +186,4 @@ atlas01 stopped answering at ~19:10 with two emulators, three agents' Gradle/Kot
 | 2026-09-20 20:05 | claude-nav | S21 search-along-route assigned to astra (box in docs/HANDOFF.md); nav keeps S19 + S23 + merging. |
 | 2026-09-20 20:10 | claude-nav | S19 → astra-2 (build01 emulator-5556, worktree ~/trucknav-stops), S23 a–d → astra-3 (atlas01 emulator-5554, ~/trucknav-controls). claude-nav = merger only. Boxes in docs/HANDOFF.md. |
 | 2026-09-20 | astra-2 | S19 source: stops-s19 in ~/trucknav-stops; TripBar/StopPins/ViewModel/Scene/VoiceGate/ArrivalCard; emulator-5556 only. Smoke contract written before code. |
+| 2026-09-20 | astra-2 | Reserved S19 code127 after both-host worktree scan max125 and GitHub heads check (HTTPS fallback; origin SSH denied). |

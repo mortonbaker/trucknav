@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
 import com.stadiamaps.ferrostar.composeui.config.VisualNavigationViewConfig
+import com.stadiamaps.ferrostar.composeui.config.withProgressView
 import com.stadiamaps.ferrostar.composeui.config.withInstructionsView
 import com.stadiamaps.ferrostar.composeui.config.withCustomOverlayView
 import com.stadiamaps.ferrostar.composeui.config.withSpeedLimitStyle
@@ -238,7 +239,15 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
       views =
           NavigationViewComponentBuilder.Default()
               .withInstructionsView { modifier, state ->
-                com.morton.trucknav.routingui.RoutingInstructions(modifier, state, routeSource)
+                val arrival = sceneState.arrived
+                if (arrival?.next != null) {
+                  com.morton.trucknav.nav.ArrivalCard(arrival, viewModel::dismissArrival, modifier)
+                } else {
+                  com.morton.trucknav.routingui.RoutingInstructions(modifier, state, routeSource)
+                }
+              }
+              .withProgressView { modifier, state, onEnd ->
+                com.morton.trucknav.nav.TripBar(modifier, state, viewModel, onEnd ?: viewModel::stopNavigation)
               }
               .withCustomOverlayView(
                   customOverlayView = { modifier ->
@@ -269,6 +278,7 @@ fun DemoNavigationScene(viewModel: DemoNavigationViewModel = AppModule.viewModel
           ),
   ) { ui ->
     com.morton.trucknav.traffic.TrafficLayer()
+    com.morton.trucknav.nav.StopPins(if (ui.isNavigating()) sceneState.tripStops else emptyList())
     DemoDroppedPinOverlay(sceneState.droppedPin)
     VehiclePuck(ui)
     com.morton.trucknav.nav.RoutePreviewOverlay(sceneState.preview, sceneState.previewSelected) { viewModel.selectPreview(it) }
