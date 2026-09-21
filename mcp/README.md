@@ -29,6 +29,6 @@ For existing installations only, the wrapper falls back to `apiToken` in `~/truc
 - Settings: `get_settings()`, `set_setting(key, value)`. Secret values are returned masked to their last four characters; short secrets are fully masked. `None` removes a setting. The runtime keys include `tomtomKey`, `googleMapsKey`, and `trafficProvider` (`off`, `tomtom`, or `google`).
 - Places: `list_favorites()`, `list_recent()`, `add_favorite(...)`, `remove_favorite(...)`, `set_home(lat, lng, name)`, `set_work(lat, lng, name)`. Home and Work replace their singleton saved places and update the map tiles.
 - Vehicle: `upload_vehicle(path)` reads a file on the MCP host. Supply a PNG or JPEG no larger than 2 MiB, top view with the nose up. Transparent PNG is recommended; JPEG has no alpha. The app fits the image into a transparent 256 x 256 PNG and hot-reloads the puck. The tool's docstring includes the same specification.
-- Navigation: `status()`, `navigate_to(...)`, `stop_navigation()`.
+- Navigation: `status()`, `navigate_to(...)`, `add_stop(...)`, `stop_navigation()`.
 
 See [API reference](../docs/API.md) and [Set up for your own truck](../README.md) for endpoint details and runtime server configuration.

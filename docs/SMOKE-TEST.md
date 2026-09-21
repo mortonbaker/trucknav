@@ -384,3 +384,12 @@ source; rollback copy: trucknav_mcp.pre-settings-contract.py. No tablet request
 or installation occurred. Public GitHub publication and production merge/install
 remain blocked pending explicit approval; nav-owned Units/preview consumer hooks
 remain pending. Do not mark S20 fully delivered or bump the production version yet.
+
+
+S20 cleanup, 20:41 CDT: original atlas01 `trucknav-tab` AVD restored; disposable
+profile stopped; no playback left running. The original emulator's expired S20
+lease was free and subsequently acquired by astra-3 for S23; no further device
+changes by S20. `docs/emu-settings.sh` now invokes the same passing six-test UI/core
+suite after its API/MCP checks, so the repeatable acceptance entrypoint includes
+the on-screen controls and QR proof. Its component commands were run above; the
+combined wrapper was syntax-checked after wiring them together.
