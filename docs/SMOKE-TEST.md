@@ -287,3 +287,52 @@ Scripts: `docs/emu-favorites.sh` (`E=emulator-5556`), `docs/emu-arrival.sh`, `do
 Screens: `~/arrival-a2-card.png` (card over the map, puck at Whole Foods), `~/addstop-s3-results.png` (search + lettered results over the navigating layout), `~/addstop-s3-after.png` (route via Kroger, 20 m / 14 mi, following camera).
 
 Open from S17: night-mode field switch; `docs/emu-favorites.sh` still hard-codes the Whole Foods result label; the "Add stop" search card covers the Layers/Add-stop buttons while open (cosmetic).
+
+
+## S22 — Traffic foundation, 2026-09-20 (Astra; build01 emulator-5554)
+
+**IN PROGRESS, not DONE, not merged.** Branch `traffic-s22`, base `166e423`,
+version 0.31.0/code 115 inherited from main (no slice version bump).
+Build `:app:assembleDebug :app:assembleDebugAndroidTest` passed. Local development
+Settings stub only; replace it with the S20 contract before integration. No tablet use.
+
+| Criterion | Measured | Result |
+|---|---|---|
+| Provider contract fixtures | 12/12 instrumentation tests in 3.717 s: TomTom supporting geometry, Google TRAFFIC_AWARE/via ordering/ETA-only, both HTTP403, null answers, 3s timeout, strict 10min expiry, request cap/restart, incident parsing/corridor, BootReceiver restriction | PASS (fixtures) |
+| e: literal credentials | 0 source/local.properties matches; both providers read Settings only | PASS |
+| b: actual emulator network loss, invalid generated key | Wi-Fi plus LTE fallback disabled; overlay hidden; 0 new traffic requests over 8s after settling | PASS (offline gate) |
+| b: reconnection | 5,878 ms to online state, 0 crashes | PARTIAL (valid flow pixels still pending) |
+| f: cockpit, final build | 13/13, 0 crashes | PASS |
+| S7 status | ui-s7 already merged via d7ef03f, ancestor of current main; no duplicate merge | VERIFIED |
+| a: live TomTom colored pixels ≤5s + 30min fake drive ≤2000 requests | No operator key available. Persistent sliding cap tested; live soak not run | BLOCKED |
+| c: actual A/B/C cards and TripBar | Provider fixtures pass; nav owner consumer hooks awaiting integration | BLOCKED |
+| d: actual Settings Test key UI | Component implemented; HTTP403 fixture passes; S20 pane hook awaiting integration | BLOCKED |
+| Google ETA on existing OSM map | Google service-specific terms §19.2 conflict; operator decision pending | HOLD |
+
+Evidence on build01:
+- `~/evidence/traffic-s22-fixtures-bootfix/` (test output, build, credential audit)
+- `~/evidence/traffic-s22-offline-bootfix/` (network states, zero-request window, screenshot, crash buffer)
+- `~/evidence/cockpit-s22-final/` (13 criterion rows, pane screenshots)
+- `~/evidence/traffic-s22-ui/layers.png` and `layers.xml` (actual Traffic control)
+
+Findings/fixes:
+1. Initial cockpit was 12/13: warm MapLibre cache produced 7 local requests against
+   the harness's 10-request cold-render criterion. Moved only the regenerable
+   `files/mbgl-offline.db` aside, preserving it as `.s22-preserved`; cold check
+   produced 39 requests and 13/13. No pm clear; basemap untouched; harness unchanged.
+2. Wi-Fi disable alone did NOT create offline conditions: AVD had a validated LTE
+   fallback. Harness now temporarily disables data too and restores prior state;
+   device-side 20s restore plus shell trap. Both radios restored to enabled.
+3. Observed a real baseline crash from BootReceiver when Android 15 rejected a
+   foreground service start. Narrow exception guard defers overlay startup to the
+   existing foreground CockpitScreen path. Regression test + subsequent offline
+   run and cockpit have zero crashes. Original failing evidence retained.
+4. No raw upstream URLs or response bodies are logged. Loopback raster URLs carry
+   no keys; four workers/bounded queue, bounded response bytes, 2.8s network limit,
+   3s ETA deadline, daily attempt counter and persistent rolling tile budget.
+
+`docs/emu-traffic.sh` has fixtures/offline/30-minute-soak modes. It records
+BLOCKED rather than promoting fixture results to live acceptance. The final
+live screenshot ≤5s, both actual card states, and Test key UI criteria still need
+their integrated UI harness extensions and real credentials. See
+`docs/S22-INTEGRATION.md` for control contracts and the exact nav/Settings hooks.

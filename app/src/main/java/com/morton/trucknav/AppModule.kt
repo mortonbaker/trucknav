@@ -43,9 +43,11 @@ object AppModule {
         com.morton.trucknav.nav.NavPrefs.gate = voiceGate
         com.morton.trucknav.nav.NavPrefs.init(appContext)
         com.morton.trucknav.nav.NightMode.start()
+        com.morton.trucknav.settings.Settings.init(appContext)
         api.start()
         MapStyles.init(appContext)
         assets.start()
+        com.morton.trucknav.traffic.Traffic.init(appContext)
     }
 
     val locationProvider: NavigationLocationProvider by lazy {

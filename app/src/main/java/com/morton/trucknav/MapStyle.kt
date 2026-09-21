@@ -109,6 +109,7 @@ fun MapStyleSheet(onDismiss: () -> Unit) {
                 }
             }
         }
+        com.morton.trucknav.traffic.TrafficLayerToggle()
         // Voice: which announcement classes are spoken. Big toggles, one tap.
         val off by com.morton.trucknav.nav.NavPrefs.disabledClasses.collectAsState()
         val autoNight by com.morton.trucknav.nav.NavPrefs.autoNight.collectAsState()
