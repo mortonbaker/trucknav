@@ -138,7 +138,7 @@ try:
     def b():
         s=log();save("pins.log",s)
         tap("Route Overview");ui("pins")
-        tap("Recenter Map")
+        tap("Center on my location")  # S23 corner stack replaced Ferrostar Recenter Map
         assert "stop-pins numbered=2 flag=1" in s
         return "2 numbered features; 1 flag"
     row("b","pins 1,2 and destination flag",b,"pins.png pins.log")

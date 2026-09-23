@@ -8,7 +8,7 @@
 # c: all map actions >=56dp, every gap >=12dp, measured from dump.
 # d: S2 browse center +/-5%, navigating lower third, panels open/closed, both rotations.
 # e: zero crashes with successful collection; restore rotation and foreground on exit.
-SLICE=s23-controls PKG=com.morton.trucknav SERIAL=emulator-5554
+SLICE=s23-controls PKG=com.morton.trucknav SERIAL=${SERIAL:-emulator-5554}
 export SERIAL
 . ~/.claude/skills/slice-build/scripts/smoke-lib.sh
 . ~/.claude/skills/slice-build/scripts/android.sh
@@ -20,7 +20,7 @@ crash_gate() {
   [ "$collected" = 1 ] && [ "$c" = 0 ] && [ -s "$EVID/post-logcat.txt" ] && status=PASS
   row crash "zero package crashes; both log collections succeed" "count=$c collected=$collected" "$status" crash.txt
 }
-require "atlas01 only" test "$(hostname -s)" = atlas01
+require "emulator only (never the tablet)" test "${SERIAL#emulator-}" != "$SERIAL"
 require "expected version supplied" test -n "${EXPECTED_CODE:-}"
 require "device available" adb -s "$S" get-state
 docs/tablet-lock.sh "$S" acquire "$AGENT" 90 "S23 control geometry" || exit 2
