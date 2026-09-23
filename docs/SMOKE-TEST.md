@@ -592,3 +592,124 @@ astra: S21 search along route — Gas/Food/Coffee/Groceries chips in the add-sto
 
 Evidence: build01:~/evidence/cockpit-merge-s21a/, ~/evidence/s23-fullmap-merge-s21b/, ~/evidence/s21-along-merge-s21c/
 
+## S23 a-d — controls-s23 / code 137 (2026-09-20)
+
+**Ready for claude-nav to merge; not installed on the tablet.** astra-3,
+atlas01:~/trucknav-controls, branch `controls-s23`. Acceptance ran only on
+`emulator-5554`. The done-line smoke contract was committed as `26b53a9`
+before any application code. Final code 137 was allocated from the checked
+both-host worktree maximum 135 + 2; origin branch versions were also checked.
+Assembly used the pressure gate and Gradle flock.
+
+Receipt: `atlas01:~/evidence/s23-controls-run3/`. This directory includes
+the raw dumps/screens, each button's bounds, all S2 detections, compact-pane
+test, full-map test, required navigation regressions, protected-source hashes,
+APK identity, and restored-state record.
+
+| Acceptance summary | Measured | Result |
+|---|---|---|
+| a, right-edge/corner placement | 52 control rectangles across idle/results/sheet/navigation/add-stop in rotations 0 and 1; all right insets and top/bottom corner insets exactly 16 dp | PASS |
+| b, no information overlap | Zero intersections in all 10 states; turn card, progress bar, search, results, tiles, sheet and 120 dp bottom-left reserve checked | PASS |
+| c, targets and gaps | Minimum target 56.38 dp; minimum gap 12.19 dp at 210 dpi (74 px / 16 px) | PASS |
+| d, S2 | All eight Map/Music × portrait/landscape × browse/nav cases pass; browse error <0.1%, nav y=0.7005–0.7942 | PASS |
+| e, crash gate | 0 package crashes; both log collections succeeded; final post-regression check also 0 | PASS |
+| Compact portrait controls | Scroll exposes Overview/Mute then Layers/Add-stop; visible targets >=74 px, disjoint; Add-stop opens search | PASS |
+| Protected source | Scene NavigationCameraOptions, ClampedInsets and addingStop block byte-identical; no diff in prohibited files/directories | PASS |
+| Restore/build identity | Rotation 0/auto 1, Hybrid, Books pane, idle media, favorites/recents byte-identical, no ADB forwards, lease released; installed APK hash matches build | PASS |
+
+APK SHA-256: `d3d1c2172f39b884feb42b040700e933da7cecea515f28bb77aeb389c3f08742`.
+
+### Required navigation regressions
+
+| Regression | Measured | Result |
+|---|---|---|
+| Favorites | Home saved; tile ETA 14 min; quick-preview event, explicit Start, NAVIGATING 32 ms after Start event | PASS |
+| S23e full-map | 7/7 rows; rail hides in 1644 ms and returns in 518 ms; Books pane returns | PASS |
+| Overview | Route x=802..1276/y=288..460 inside x=749..1298/y=69..683; fill 86% × 28% | PASS |
+| Add-stop | Idle HTTP 409; 11.02 → 13.67 → 19.15 mi, two stop-add events, search closes, first stop retained | PASS |
+| Arrival | One arrival-category event; Arrived/Done shown; auto-idle; no spoken or visual instructions after arrival | PASS |
+| Search | Light/Satellite/Dark all 18.5:1; 64 dp search field; result selection opens sheet with keyboard closed | PASS |
+
+Legacy regression scripts were copied into the evidence directory with explicit
+emulator targeting (search originally hardcoded the tablet), the existing vision
+Python, this worktree's token source, and preview-first favorite flow. The broad
+arrival grep counts both the event and a voice message; the event count is one.
+The favorites script's content-desc-only preview grep misses the text node;
+NavLog and full-map FM5 prove the preview/Start flow. Its post-tap 44 ms counter
+is not used as latency evidence. The first overview pixel attempt was invalid
+because the legacy full-map cleanup switched to portrait; the explicit-landscape
+rerun above is authoritative. Raw attempts and assessment are retained.
+
+Run1 was invalidated because asset transfer was still running. Code129/run2
+passed geometry but failed S2; baseline code123 independently reproduced the
+portrait Music puck at y=0.5872. Code137 repairs that bounded short-map case to
+y=0.7005 and keeps browsing tiles clear of the centered truck. The scene's S2
+template blocks remain unchanged. See `docs/S23-CONTROLS.md` for the adapter
+mechanism and merger guidance.
+
+Debug assembly passed. The lint attempt reported nine existing errors, all in
+unchanged files (MainActivity, ApiServer, StatusStrip, BooksPlayerService,
+AndroidManifest); no baseline or unrelated fixes were added. Merger must retain
+S19's TripBar and this slice's portrait end reserve when resolving scene wiring,
+then run the merge smoke on the integrated build.
+
+### Exact S23 run table
+
+#### s23-controls — 2026-09-20 21:26:17, version 0.33.0 / code 137, agent astra-3, tag run3 (380s)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| a-1-idle | a: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 1-idle-geometry.txt; 1-idle.xml; 1-idle.png |
+| b-1-idle | b: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 1-idle-geometry.txt; 1-idle.xml; 1-idle.png |
+| c-1-idle | c: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 1-idle-geometry.txt; 1-idle.xml; 1-idle.png |
+| a-1-results | a: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-results-geometry.txt; 1-results.xml; 1-results.png |
+| b-1-results | b: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-results-geometry.txt; 1-results.xml; 1-results.png |
+| c-1-results | c: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-results-geometry.txt; 1-results.xml; 1-results.png |
+| a-1-sheet | a: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-sheet-geometry.txt; 1-sheet.xml; 1-sheet.png |
+| b-1-sheet | b: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-sheet-geometry.txt; 1-sheet.xml; 1-sheet.png |
+| c-1-sheet | c: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 1-sheet-geometry.txt; 1-sheet.xml; 1-sheet.png |
+| a-1-navigating | a: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 1-navigating-geometry.txt; 1-navigating.xml; 1-navigating.png |
+| b-1-navigating | b: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 1-navigating-geometry.txt; 1-navigating.xml; 1-navigating.png |
+| c-1-navigating | c: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 1-navigating-geometry.txt; 1-navigating.xml; 1-navigating.png |
+| a-1-add-stop | a: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 1-add-stop-geometry.txt; 1-add-stop.xml; 1-add-stop.png |
+| b-1-add-stop | b: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 1-add-stop-geometry.txt; 1-add-stop.xml; 1-add-stop.png |
+| c-1-add-stop | c: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 1-add-stop-geometry.txt; 1-add-stop.xml; 1-add-stop.png |
+| a-0-idle | a: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 0-idle-geometry.txt; 0-idle.xml; 0-idle.png |
+| b-0-idle | b: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 0-idle-geometry.txt; 0-idle.xml; 0-idle.png |
+| c-0-idle | c: placement/non-overlap/size-gap contract |   4 controls; 6 information rectangles | PASS | 0-idle-geometry.txt; 0-idle.xml; 0-idle.png |
+| a-0-results | a: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-results-geometry.txt; 0-results.xml; 0-results.png |
+| b-0-results | b: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-results-geometry.txt; 0-results.xml; 0-results.png |
+| c-0-results | c: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-results-geometry.txt; 0-results.xml; 0-results.png |
+| a-0-sheet | a: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-sheet-geometry.txt; 0-sheet.xml; 0-sheet.png |
+| b-0-sheet | b: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-sheet-geometry.txt; 0-sheet.xml; 0-sheet.png |
+| c-0-sheet | c: placement/non-overlap/size-gap contract |   4 controls; 7 information rectangles | PASS | 0-sheet-geometry.txt; 0-sheet.xml; 0-sheet.png |
+| a-0-navigating | a: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 0-navigating-geometry.txt; 0-navigating.xml; 0-navigating.png |
+| b-0-navigating | b: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 0-navigating-geometry.txt; 0-navigating.xml; 0-navigating.png |
+| c-0-navigating | c: placement/non-overlap/size-gap contract |   7 controls; 2 information rectangles | PASS | 0-navigating-geometry.txt; 0-navigating.xml; 0-navigating.png |
+| a-0-add-stop | a: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 0-add-stop-geometry.txt; 0-add-stop.xml; 0-add-stop.png |
+| b-0-add-stop | b: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 0-add-stop-geometry.txt; 0-add-stop.xml; 0-add-stop.png |
+| c-0-add-stop | c: placement/non-overlap/size-gap contract |   7 controls; 3 information rectangles | PASS | 0-add-stop-geometry.txt; 0-add-stop.xml; 0-add-stop.png |
+| d | S2 camera criteria unchanged | exit=0 | PASS | s2-camera.txt |
+| build | expected build remained installed | 137 -> 137 | PASS | version.txt |
+| restore | rotation and auto-rotate restored | 0/1 -> 0/1 | PASS | - |
+| crash | zero package crashes; both log collections succeed | count=0 collected=1 | PASS | crash.txt |
+
+Evidence: `/home/morton/evidence/s23-controls-run3`
+
+### Exact S2 run table
+
+#### s2-camera — 2026-09-20 21:26:14, version 0.33.0, agent astra-3, tag run3-s2 (255s)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| browse-1-Map | browse center +/-5%; nav lower third | puck=(399.5,594.0) map=(0,37,800,1150) fraction=(0.4994,0.5004) image_match_error=0.1619 PASS (exit=0) | PASS | browse-1-Map.png; browse-1-Map.xml; browse-1-Map-detected.png |
+| browse-1-Music | browse center +/-5%; nav lower third | puck=(399.5,315.0) map=(0,37,800,593) fraction=(0.4994,0.5000) image_match_error=0.1686 PASS (exit=0) | PASS | browse-1-Music.png; browse-1-Music.xml; browse-1-Music-detected.png |
+| browse-0-Map | browse center +/-5%; nav lower third | puck=(727.5,382.0) map=(116,37,1340,726) fraction=(0.4996,0.5007) image_match_error=0.2005 PASS (exit=0) | PASS | browse-0-Map.png; browse-0-Map.xml; browse-0-Map-detected.png |
+| browse-0-Music | browse center +/-5%; nav lower third | puck=(482.5,382.0) map=(116,37,850,726) fraction=(0.4993,0.5007) image_match_error=0.1977 PASS (exit=0) | PASS | browse-0-Music.png; browse-0-Music.xml; browse-0-Music-detected.png |
+| nav-1-Map | browse center +/-5%; nav lower third | puck=(400.5,921.0) map=(0,37,800,1150) fraction=(0.5006,0.7942) image_match_error=0.1599 PASS (exit=0) | PASS | nav-1-Map.png; nav-1-Map.xml; nav-1-Map-detected.png |
+| nav-1-Music | browse center +/-5%; nav lower third | puck=(400.5,426.5) map=(0,37,800,593) fraction=(0.5006,0.7005) image_match_error=0.1819 PASS (exit=0) | PASS | nav-1-Music.png; nav-1-Music.xml; nav-1-Music-detected.png |
+| nav-0-Map | browse center +/-5%; nav lower third | puck=(1033.5,555.0) map=(116,37,1340,726) fraction=(0.7496,0.7518) image_match_error=0.1901 PASS (exit=0) | PASS | nav-0-Map.png; nav-0-Map.xml; nav-0-Map-detected.png |
+| nav-0-Music | browse center +/-5%; nav lower third | puck=(666.5,555.0) map=(116,37,850,726) fraction=(0.7500,0.7518) image_match_error=0.1781 PASS (exit=0) | PASS | nav-0-Music.png; nav-0-Music.xml; nav-0-Music-detected.png |
+| crash | zero package crashes; both log collections succeed | count=0 collected=1 | PASS | crash.txt |
+
+Evidence: `/home/morton/evidence/s2-camera-run3-s2`
