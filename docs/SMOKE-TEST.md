@@ -713,3 +713,17 @@ Evidence: `/home/morton/evidence/s23-controls-run3`
 | crash | zero package crashes; both log collections succeed | count=0 collected=1 | PASS | crash.txt |
 
 Evidence: `/home/morton/evidence/s2-camera-run3-s2`
+
+## S23 a-d merge gate — main 0.38.0 / 143 (2026-09-23, claude-nav)
+
+controls-s23 merged via merge-s23 (conflict resolution a70e4c3: S19 arrival card + TripBar keep the S23 portrait right-edge padding). Merge emulator build01 emulator-5558 (AVD trucknav-merge), debug build of the merged tree (tree-identical to main 2a32a23).
+
+| Harness | Result | Evidence (build01) |
+|---|---|---|
+| cockpit-smoke.sh | 13/13, cold render 82 requests | ~/evidence/cockpit-merge-s23a/ |
+| smoke/s23-fullmap.sh | 7/7 | ~/evidence/s23-fullmap-merge-s23a/ |
+| smoke/s23-controls.sh | 34/34 incl. (d) S2 camera all PASS | ~/evidence/s23-controls-merge-s23b/ |
+| smoke/s19-stops.sh | 8/8 (leg error 0.13 %, flip 48 ms, arrival spoken once) | ~/evidence/s19-stops-merge-s23b/ |
+| tablet install (release) | versionCode 143, MainActivity foreground, 0 crashes | ~/evidence/tablet-0.38.0.png |
+
+Harness notes: s23-controls.sh was pinned to atlas01/emulator-5554 (now SERIAL-overridable, emulator-only guard). s2-camera needs cv2/numpy/PIL — on build01 run with PYTHON=~/.venvs/smoke/bin/python (run merge-s23a failed (d) on the missing module, not the app). s19-stops (b) tapped Ferrostar "Recenter Map", which S23 replaced with "Center on my location".

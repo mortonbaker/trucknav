@@ -38,11 +38,11 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S16 | Relay board on every network + Pi flow | S | app side DONE 0.21.0; truck side STAGED (ESP32 OTA when battery healthy, operator present) | `s16-pi-relay.sh` |
 | S17 | Navigation, finished (11 parts) | M–L | DONE 0.28.0; + preview-first favorites and A/B/C badges 0.30.0 | SMOKE-TEST "S17.1–S17.11" |
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
-| S19 | Trip bar + stops (Google/Tesla) | M | READY 0.34.0-s19 / 127 (astra-2); awaiting claude-nav merge | s19-stops.sh run5: 8/8, build01 evidence; SMOKE-TEST S19 |
-| S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | NEXT (hand off) | — |
-| S21 | Search along route | M | READY along-s21, 0.34.1/code131 — a–f proven on build01 emulator; claude-nav merges/installs | SMOKE-TEST S21; ~/evidence/s21-along-final131/receipt.md |
-| S22 | Traffic (TomTom only) | M + key | foundation merged 0.33.0; live pixels / ETA line / Test-key UI OPEN (need a TomTom key + S20 pane) | SMOKE-TEST "S22" |
-| S23 | Map control placement + full-map destination mode | S | (a)–(d) DONE on controls-s23 / code 137, awaiting claude-nav merge; (e) DONE 0.32.0 | controls run3: 34/34; S2 8/8; full-map 7/7; SMOKE-TEST S23 a-d |
+| S19 | Trip bar + stops (Google/Tesla) | M | DONE 0.36.0 / 139 (astra-2) | s19-stops.sh 8/8; re-run on 0.38.0 8/8 |
+| S20 | Usable by others (settings, no hardcoded places, vehicle upload, first run) | M | DONE 0.35.0 / 135 (claude-vehicle) | emu-settings, cockpit 13/13 |
+| S21 | Search along route | M | DONE 0.37.0 / 141 (astra) | s21-along.sh a–f; SMOKE-TEST S21 |
+| S22 | Traffic (TomTom only) | M + key | merged 0.34.0; live pixels / ETA line / Test-key PARKED — operator has no TomTom key (2026-09-23) | SMOKE-TEST "S22" |
+| S23 | Map control placement + full-map destination mode | S | DONE 0.38.0 / 143 (a–d astra-3, e 0.32.0) | merge gate: s23-controls 34/34 (S2 incl.), full-map 7/7, s19 8/8, cockpit 13/13 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
 Suggested split: **nav track** S19 → S21 → S23; **vehicle track** S20 (settings + API + vehicle upload) → S16 truck side when the truck is home; **Astra** S22 traffic research + S7 merge; **operator** S4 sign-in, S10, ESP32 OTA.
