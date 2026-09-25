@@ -68,7 +68,7 @@ fun VehiclePane(relay: RelayClient, modifier: Modifier = Modifier) {
             LazyVerticalGrid(columns = GridCells.Adaptive(180.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(shown, key = { it.id }) { sw ->
                     val critical = sw.id == RelayClient.STARLINK
-                    Tile(sw, enabled = !r.busy, critical = critical,
+                    Tile(sw, enabled = r.reachable, pending = sw.id in r.pending, critical = critical,
                         onTap = { if (critical) { if (!sw.on) relay.set(sw.id, true) } else relay.toggle(sw.id) },
                         onHold = { if (critical) relay.set(sw.id, false) })
                 }
@@ -89,7 +89,7 @@ private fun label(sw: RelaySwitch) = if (unassigned(sw)) sw.name.substringBefore
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Tile(sw: RelaySwitch, enabled: Boolean, critical: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
+private fun Tile(sw: RelaySwitch, enabled: Boolean, pending: Boolean, critical: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
     val dim = unassigned(sw)
     val fg = if (dim) Color(0xFF9aa4b2) else Color.White
     Column(
@@ -101,7 +101,7 @@ private fun Tile(sw: RelaySwitch, enabled: Boolean, critical: Boolean, onTap: ()
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Icon(iconFor(sw), contentDescription = null, tint = fg, modifier = Modifier.size(34.dp))
-            Text(if (sw.on) "ON" else "OFF", color = if (sw.on) Color.White else Color(0xFF9aa4b2), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(if (sw.on) "ON" else "OFF", color = if (pending) Color(0xFFf0a030) else if (sw.on) Color.White else Color(0xFF9aa4b2), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Column {
             Text(label(sw), color = fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)

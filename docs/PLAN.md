@@ -43,6 +43,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S21 | Search along route | M | DONE 0.37.0 / 141 (astra) | s21-along.sh a–f; SMOKE-TEST S21 |
 | S22 | Traffic (TomTom only) | M + key | merged 0.34.0; live pixels / ETA line / Test-key PARKED — operator has no TomTom key (2026-09-23) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | DONE 0.38.0 / 143 (a–d astra-3, e 0.32.0) | merge gate: s23-controls 34/34 (S2 incl.), full-map 7/7, s19 8/8, cockpit 13/13 |
+| S25 | Relay board live state (ESPHome /events push) + Venus LAN fix + Pi Wi-Fi watchdog v2 | S | DONE 0.40.0 / 147 (claude-power), emulator; tablet install pending | `s25-relay.sh` run5 11/11, `s25-venus-lan.sh` 4/4, s24 11/11, cockpit 13/13 |
 | S24 | Power strip time estimate (Jackery-style "to full" / "left") | S | DONE 0.39.0 / 145 (claude-power), emulator; truck read-back pending | `docs/smoke/s24-eta.sh` run3 11/11, cockpit 13/13 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
@@ -164,3 +165,10 @@ Design: new cell right after SOC. Charging above 0.3 A → **To full** = (100 �
 Done when: `docs/smoke/s24-eta.sh` rows P1–P9 + crash (fake mosquitto on atlas01 plays the Pi; the emulator's venusHost goes to 10.0.2.2 for the run and back after).
 Known limit: only as accurate as the SmartShunt. In the 4Runner (2026-09-25) its capacity reads 100 Ah and the wall charger looked like it bypassed the shunt (14.20 V held with −0.4 A through the shunt).
 Open: read-back on the truck tablet with the real Pi (strip value vs `dbus` TimeToGo).
+
+### S25 — Relay board live state + Venus LAN fix — DONE 0.40.0 / 147
+Why: a tap took ~11 sequential requests (board check, POST, 0.6 s wait, 8 reads) before the tile moved, and changes made elsewhere waited for a 15 s poll. The tablet's /24 sweep also cached Home Assistant's mosquitto (192.168.0.126, "Not authorized") as the Pi and never swept again.
+What: `RelayClient` holds one `GET /events` (ESPHome SSE, what its own web page uses): all switches on connect, every change pushed; 25 s read timeout = 2.5 missed pings → tiles removed and reconnect. Taps flip the tile at once (pending = amber state text) and revert on a failed POST; commands use the entity-name URL (object-id URLs are deprecated). `VenusClient` sweeps return every open 1883 and a host is cached only after the MQTT connect succeeds; a cached host that refuses is dropped.
+Proof: `docs/smoke/s25-relay.sh` against `docs/smoke/fake-esphome-relay.py` (0.3 s per request like the ESP32): tap → tile blue 0.6–0.9 s including a ~0.4 s screencap per probe (screenrecord: 45 ms), external change 0.4 s, 0 GETs in 30 s idle, 500 → revert 1.3 s, silence → tiles gone 5.5 s, back 8 s, Starlink tap-on/hold-off kept. `docs/smoke/s25-venus-lan.sh`: refusing broker not cached, sweeping continues, accepting broker cached + SOC shown.
+Pi (not app): `docs/pi/wifi-watchdog.sh` v2 installed 2026-09-25 15:58 UTC (v1 kept as `wifi-watchdog.sh.v1-20260925`). Root cause of the 10:27 drop: ConnMan roamed Everything → EveryLink, called Everything "stuck in failed state", restarted itself and did not see wlan0 for 4.5 min; v1 (60 s checks, bounce at 5 min) sat it out, and v1's connect-every-visible-network loop knocked the good link off twice (15:41:22, 15:43:22). v2: 15 s checks, "no wifi services" counts as down, bounce at 30 s then every 2 min, favourites only, pidfile; status line on change to `/data/log/netstat.log`.
+Open: tablet install + a real tap on the truck; ESP32 panel buttons (config staged when the operator picks buttons → relays).

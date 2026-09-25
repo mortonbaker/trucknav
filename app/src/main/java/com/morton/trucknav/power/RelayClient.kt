@@ -16,9 +16,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 // The 4Runner's ESPHome relay board ("4runner-relay", LC 8-relay). Relay 1
@@ -28,13 +30,19 @@ import java.util.concurrent.TimeUnit
 // resolver we can trust, so we find it the blunt way: hit /switch/<id> on
 // every host of our own /24 and keep the one that answers (same trick as
 // /data/starlink/relay.sh on the Venus Pi).
+//
+// Once found, state is pushed, not polled: one long-lived GET /events (ESPHome's
+// Server-Sent Events, what its own web page uses) delivers every switch on connect
+// and every change within ~0.3 s, whoever made it (tablet, web page, HA, a panel
+// button). The board pings every 10 s; 25 s of silence means the link is gone.
 data class RelaySwitch(val id: String, val name: String, val on: Boolean)
 
 data class RelayState(
     val host: String? = null,                    // where the board answered last
     val switches: List<RelaySwitch> = emptyList(),
     val updatedAt: Long = 0L,
-    val busy: Boolean = false,                   // a scan or a switch is in flight
+    val busy: Boolean = false,                   // looking for the board, nothing known yet
+    val pending: Set<String> = emptySet(),       // commands sent, board not yet confirmed
     val error: String? = null,
 ) {
     val reachable get() = switches.isNotEmpty()
@@ -52,13 +60,60 @@ class RelayClient(private val ctx: Context) {
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val http = OkHttpClient.Builder().connectTimeout(1500, TimeUnit.MILLISECONDS).readTimeout(2, TimeUnit.SECONDS).build()
+    // The event stream: no call deadline, but a read gap longer than 2.5 pings is a dead link.
+    private val stream = http.newBuilder().readTimeout(25, TimeUnit.SECONDS).build()
     private val _state = MutableStateFlow(RelayState(host = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("host", null)))
     val state: StateFlow<RelayState> = _state
     private var polling = false
 
     fun start() {
         if (polling) return; polling = true
-        scope.launch { while (true) { refresh(); delay(15_000) } }
+        scope.launch {
+            while (true) {
+                if (_state.value.switches.isEmpty()) _state.value = _state.value.copy(busy = true)
+                val host = discover()
+                if (host == null) {
+                    _state.value = RelayState(host = _state.value.host, updatedAt = System.currentTimeMillis(), error = "relay board not on this network")
+                    delay(10_000); continue
+                }
+                if (host != _state.value.host) ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString("host", host).apply()
+                try { listen(host) } catch (e: Exception) { Log.w(TAG, "events $host: $e") }
+                // Stream ended: grey the tiles rather than show state we can no longer vouch for.
+                _state.value = RelayState(host = host, updatedAt = System.currentTimeMillis(), error = "relay board connection lost, reconnecting")
+                delay(1_000)
+            }
+        }
+    }
+
+    // Blocks for as long as the board keeps talking. Every "state" event for a switch
+    // replaces that tile; its arrival also clears the tile's pending flag.
+    private fun listen(host: String) {
+        stream.newCall(Request.Builder().url("http://$host/events").header("Accept", "text/event-stream").build()).execute().use { r ->
+            if (!r.isSuccessful) throw java.io.IOException("HTTP ${r.code}")
+            Log.i(TAG, "events connected to $host")
+            val src = r.body!!.source()
+            var event = ""; val data = StringBuilder()
+            while (true) {
+                val line = src.readUtf8Line() ?: return
+                when {
+                    line.isEmpty() -> { if (event == "state") onState(host, data.toString()); event = ""; data.setLength(0) }
+                    line.startsWith("event:") -> event = line.substring(6).trim()
+                    line.startsWith("data:") -> data.append(line.substring(5).trim())
+                }
+            }
+        }
+    }
+
+    private fun onState(host: String, json: String) {
+        val o = try { JSONObject(json) } catch (_: Exception) { return }
+        val domId = o.optString("id")                    // "switch-relay_1__starlink_" (kept for compatibility)
+        if (!domId.startsWith("switch-")) return
+        val sw = RelaySwitch(domId.removePrefix("switch-"), o.optString("name"), o.optBoolean("value"))
+        synchronized(this) {
+            val cur = _state.value
+            val list = (cur.switches.filter { it.id != sw.id } + sw).sortedBy { IDS.indexOf(it.id).let { i -> if (i < 0) 99 else i } }
+            _state.value = cur.copy(host = host, switches = list, busy = false, error = null, pending = cur.pending - sw.id, updatedAt = System.currentTimeMillis())
+        }
     }
 
     // GET /switch/<id> → RelaySwitch, or null when that host is not the board / pin unknown.
@@ -98,25 +153,31 @@ class RelayClient(private val ctx: Context) {
         return null
     }
 
-    private fun readAll(host: String): List<RelaySwitch> = IDS.mapNotNull { read(host, it) }
 
-    suspend fun refresh() = withContext(Dispatchers.IO) {
-        _state.value = _state.value.copy(busy = true)
-        val host = discover()
-        if (host == null) { _state.value = RelayState(host = _state.value.host, updatedAt = System.currentTimeMillis(), error = "relay board not on this network"); return@withContext }
-        if (host != _state.value.host) ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString("host", host).apply()
-        _state.value = RelayState(host = host, switches = readAll(host), updatedAt = System.currentTimeMillis())
-    }
-
+    // Tile flips at once; the board's state event confirms it (pending clears). A failed
+    // POST puts the tile back. ESPHome wants the entity name in the URL (the object-id
+    // form is deprecated); OkHttp percent-encodes "Relay 1 (Starlink)".
     fun set(id: String, on: Boolean) { scope.launch {
-        val host = _state.value.host?.takeIf { isBoard(it) } ?: discover() ?: run { _state.value = _state.value.copy(busy = false, error = "relay board not on this network"); return@launch }
-        _state.value = _state.value.copy(busy = true)
+        val cur = _state.value
+        val host = cur.host?.takeIf { cur.switches.isNotEmpty() } ?: discover() ?: run { _state.value = _state.value.copy(error = "relay board not on this network"); return@launch }
+        val name = cur.switches.firstOrNull { it.id == id }?.name ?: read(host, id)?.name ?: return@launch
+        val before = _state.value.on(id)
+        synchronized(this@RelayClient) {
+            _state.value = _state.value.copy(pending = _state.value.pending + id, switches = _state.value.switches.map { if (it.id == id) it.copy(on = on) else it })
+        }
         try {
-            http.newCall(Request.Builder().url("http://$host/switch/$id/turn_${if (on) "on" else "off"}").post(ByteArray(0).toRequestBody()).build()).execute().close()
-            delay(600)
-            _state.value = RelayState(host = host, switches = readAll(host), updatedAt = System.currentTimeMillis())
-            Log.i(TAG, "$id -> ${_state.value.on(id)} via $host")
-        } catch (e: Exception) { Log.w(TAG, "set $id: $e"); _state.value = _state.value.copy(busy = false, error = e.message); refresh() }
+            val url = "http://$host/".toHttpUrl().newBuilder().addPathSegment("switch").addPathSegment(name).addPathSegment(if (on) "turn_on" else "turn_off").build()
+            http.newCall(Request.Builder().url(url).post(ByteArray(0).toRequestBody()).build()).execute().use { r -> if (!r.isSuccessful) throw java.io.IOException("HTTP ${r.code}") }
+            Log.i(TAG, "$id -> $on via $host")
+            // No event comes if the relay was already in that state; stop waiting after 3 s.
+            delay(3_000); synchronized(this@RelayClient) { _state.value = _state.value.copy(pending = _state.value.pending - id) }
+        } catch (e: Exception) {
+            Log.w(TAG, "set $id: $e")
+            synchronized(this@RelayClient) {
+                _state.value = _state.value.copy(error = e.message, pending = _state.value.pending - id,
+                    switches = _state.value.switches.map { if (it.id == id && before != null) it.copy(on = before) else it })
+            }
+        }
     } }
 
     fun toggle(id: String) = set(id, _state.value.on(id) != true)
