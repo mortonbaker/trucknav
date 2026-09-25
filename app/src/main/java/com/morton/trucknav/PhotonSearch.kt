@@ -62,6 +62,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import androidx.compose.foundation.layout.Column
 import uniffi.ferrostar.GeographicCoordinate
+import com.morton.trucknav.nav.AddressQuery
+import kotlinx.coroutines.sync.withLock
 
 // Address / place search against a Photon geocoder (komoot's public instance
 // by default; point photonUrl at a self-hosted one later). Results are biased
@@ -78,6 +80,7 @@ data class PhotonHit(
     val fromHitS: Double? = null,
     val baselineS: Double? = null,
     val etaS: Double? = null,         // Valhalla matrix, arrives a moment later
+    val houseNumber: String? = null,  // geocoder's own housenumber, to tell an exact hit from a street centroid
 ) {
     fun detourText() = detourS?.let { "+${kotlin.math.round(it / 60).toInt()} min" } ?: ""
     fun distanceText() = distanceM?.let { com.morton.trucknav.settings.Units.distance(it) } ?: ""   // S20 units (mi/km)
@@ -146,12 +149,30 @@ fun PhotonSearch(
             } finally { loading = false }
         } else {
             delay(350)
-            val raw = withContext(Dispatchers.IO) { photon(query, userLocation) }
-            val withDist = raw.map { h -> h.copy(distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
-            hits = withDist.sortedBy { it.distanceM ?: Double.MAX_VALUE }.take(6).mapIndexed { i, h -> h.copy(letter = ('A' + i).toString()) }
-            onResults(hits)
-            val etas = withContext(Dispatchers.IO) { com.morton.trucknav.nav.matrixEtas(userLocation, hits.map { it.coordinate }) }
-            if (etas != null) { hits = hits.mapIndexed { i, h -> h.copy(etaS = etas.getOrNull(i)) }; onResults(hits) }
+            suspend fun show(raw: List<PhotonHit>, pinned: Int = 0) {
+                val withDist = raw.map { h -> h.copy(distanceM = userLocation?.let { u -> haversine(u, h.coordinate) }) }
+                val ordered = withDist.take(pinned) + withDist.drop(pinned).sortedBy { it.distanceM ?: Double.MAX_VALUE }
+                hits = ordered.take(6).mapIndexed { i, h -> h.copy(letter = ('A' + i).toString()) }
+                onResults(hits)
+                val etas = withContext(Dispatchers.IO) { com.morton.trucknav.nav.matrixEtas(userLocation, hits.map { it.coordinate }) }
+                if (etas != null) { hits = hits.mapIndexed { i, h -> h.copy(etaS = etas.getOrNull(i)) }; onResults(hits) }
+            }
+            val coords = AddressQuery.coordinates(query)
+            if (coords != null) {
+                show(listOf(PhotonHit("%.5f, %.5f".format(coords.first, coords.second), GeographicCoordinate(lat = coords.first, lng = coords.second))), pinned = 1)
+                return@LaunchedEffect
+            }
+            val cleaned = AddressQuery.normalize(query)
+            val raw = withContext(Dispatchers.IO) { photon(cleaned, userLocation) }
+            show(raw)
+            // House-numbered query and Photon has no point for that number (new builds often
+            // are only in Nominatim): once typing settles, ask Nominatim and pin its hit first.
+            val number = AddressQuery.houseNumber(cleaned)
+            if (number != null && raw.none { it.houseNumber.equals(number, ignoreCase = true) }) {
+                delay(1200)
+                val exact = withContext(Dispatchers.IO) { nominatim(cleaned) }
+                if (exact.isNotEmpty()) show(exact + raw, pinned = exact.size)
+            }
         }
     }
 
@@ -269,6 +290,30 @@ private fun photon(q: String, near: GeographicCoordinate?): List<PhotonHit> = tr
         val p = o["properties"]!!.jsonObject
         val parts = listOf("name", "street", "housenumber", "city", "state").mapNotNull { p[it]?.jsonPrimitive?.content }
         if (parts.isEmpty()) null
-        else PhotonHit(parts.distinct().joinToString(", "), GeographicCoordinate(lat = c[1].jsonPrimitive.content.toDouble(), lng = c[0].jsonPrimitive.content.toDouble()))
+        else PhotonHit(parts.distinct().joinToString(", "), GeographicCoordinate(lat = c[1].jsonPrimitive.content.toDouble(), lng = c[0].jsonPrimitive.content.toDouble()),
+            houseNumber = p["housenumber"]?.jsonPrimitive?.content)
     }
 } catch (e: Exception) { emptyList() }
+
+// Nominatim fallback for exact house numbers. Usage policy: identified client, at most
+// 1 request/s, no search-as-you-type — callers only reach this after typing has settled.
+private val nominatimGate = kotlinx.coroutines.sync.Mutex()
+private var nominatimLast = 0L
+private suspend fun nominatim(q: String): List<PhotonHit> = nominatimGate.withLock {
+    val wait = nominatimLast + 1100 - android.os.SystemClock.elapsedRealtime()
+    if (wait > 0) delay(wait)
+    nominatimLast = android.os.SystemClock.elapsedRealtime()
+    try {
+        val url = "https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(q, "UTF-8")}&format=jsonv2&addressdetails=1&limit=3"
+        val body = AppModule.okHttp.newCall(Request.Builder().url(url).header("User-Agent", "TruckNav/${BuildConfig.VERSION_NAME} (+https://github.com/mortonbaker/trucknav)").build()).execute().use { it.body?.string() } ?: return@withLock emptyList()
+        Json.parseToJsonElement(body).jsonArray.mapNotNull { e ->
+            val o = e.jsonObject
+            val a = o["address"]?.jsonObject
+            fun f(k: String) = a?.get(k)?.jsonPrimitive?.content
+            val number = f("house_number") ?: return@mapNotNull null   // street-level hits are Photon's job
+            val town = f("city") ?: f("town") ?: f("village") ?: f("hamlet")
+            val label = listOfNotNull(listOfNotNull(number, f("road")).joinToString(" "), town, f("state")).joinToString(", ")
+            PhotonHit(label, GeographicCoordinate(lat = o["lat"]!!.jsonPrimitive.content.toDouble(), lng = o["lon"]!!.jsonPrimitive.content.toDouble()), houseNumber = number)
+        }
+    } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { emptyList() }
+}
