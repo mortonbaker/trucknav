@@ -63,6 +63,7 @@ fun PowerStrip(client: VenusClient, relay: RelayClient, modifier: Modifier = Mod
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Cell("SOC", s.socShown?.let { "${it.roundToInt()}%" } ?: "--", if (s.lowSoc) Bad else Color.White, big = true)
+        s.eta.let { (label, value) -> Cell(label, value, if (value == "--") Muted else Color.White) }
         Cell("Batt", "${v(s.voltage)}  ${a(s.current)}", if ((s.current ?: 0.0) > 0.2) Good else if ((s.current ?: 0.0) < -0.2) Warn else Color.White)
         Cell("Solar", w(s.pvPower), Color.White)
         Cell("Alt", w(s.alternatorPower), Color.White)

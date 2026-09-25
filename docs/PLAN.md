@@ -43,6 +43,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S21 | Search along route | M | DONE 0.37.0 / 141 (astra) | s21-along.sh a–f; SMOKE-TEST S21 |
 | S22 | Traffic (TomTom only) | M + key | merged 0.34.0; live pixels / ETA line / Test-key PARKED — operator has no TomTom key (2026-09-23) | SMOKE-TEST "S22" |
 | S23 | Map control placement + full-map destination mode | S | DONE 0.38.0 / 143 (a–d astra-3, e 0.32.0) | merge gate: s23-controls 34/34 (S2 incl.), full-map 7/7, s19 8/8, cockpit 13/13 |
+| S24 | Power strip time estimate (Jackery-style "to full" / "left") | S | DONE 0.39.0 / 145 (claude-power), emulator; truck read-back pending | `docs/smoke/s24-eta.sh` run3 11/11, cockpit 13/13 |
 | — | Favorites/recents redesign (Tesla tiles + panel) | S | DONE 0.29.0 (vehicle track) | `fav-smoke` |
 
 Suggested split: **nav track** S19 → S21 → S23; **vehicle track** S20 (settings + API + vehicle upload) → S16 truck side when the truck is home; **Astra** S22 traffic research + S7 merge; **operator** S4 sign-in, S10, ESP32 OTA.
@@ -156,3 +157,10 @@ Research: pinned Ferrostar core 0.56.0 exposes remainingSteps, currentStepGeomet
 Controls: Gas/Food/Coffee/Groceries chips ≥48dp, query field/clear, A–F row selection, loading/empty/unavailable strip, Back closes add-stop. Never operate the tablet. One agent per emulator, build pressure gate + flock. No protected S19 files changed. Every measurement remains FAIL/BLOCKED until observed; never infer pass from a build.
 
 S21 transport finding: identical reverse request on build01 returned503 with User-Agent okhttp/5.3.2,200 with an explicit TruckNav identifier (5.3.0 also returned200 during diagnosis). Requests now identify the actual app/version and repository; no browser impersonation. Runtime stage diagnostics located the response at Photon /reverse.
+
+### S24 — Power strip time estimate (small) — DONE 0.39.0 / 145
+Goal: the strip shows how long until the house battery is full or empty, the way a Jackery does.
+Design: new cell right after SOC. Charging above 0.3 A → **To full** = (100 − SoC) % × capacity ÷ current; Venus publishes no charge estimate, so this is computed from `battery/+/Capacity`. Discharging below −0.3 A → **Left** = the monitor's own `TimeToGo`, else SoC × capacity ÷ current. Between ±0.3 A → **Time --** (0.1 A would say "400h"). SoC ≥ 99.5 % and not discharging → **Battery Full**. Current is an EMA on a 1 s tick, τ 60 s; a charge/discharge flip restarts it. > 99 h shows `>99h`; missing inputs show `--`, never 0.
+Done when: `docs/smoke/s24-eta.sh` rows P1–P9 + crash (fake mosquitto on atlas01 plays the Pi; the emulator's venusHost goes to 10.0.2.2 for the run and back after).
+Known limit: only as accurate as the SmartShunt. In the 4Runner (2026-09-25) its capacity reads 100 Ah and the wall charger looked like it bypassed the shunt (14.20 V held with −0.4 A through the shunt).
+Open: read-back on the truck tablet with the real Pi (strip value vs `dbus` TimeToGo).

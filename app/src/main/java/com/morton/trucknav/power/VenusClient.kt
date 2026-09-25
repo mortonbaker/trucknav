@@ -21,6 +21,8 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONObject
+import kotlin.math.exp
+import kotlin.math.roundToLong
 
 // Live numbers from the Venus OS Pi over its local MQTT broker. Venus only
 // publishes while something sends a keepalive, so we do, every 30 s. Values
@@ -44,6 +46,8 @@ data class PowerState(
     val power: Double? = null,
     val consumedAh: Double? = null,
     val timeToGoSec: Double? = null,
+    val capacityAh: Double? = null,     // battery monitor's configured capacity
+    val currentAvg: Double? = null,     // battery current, smoothed (TAU_SEC); drives the time estimate
     val temperature: Double? = null,
     val batteryState: Int? = null,      // 0 idle 1 charging 2 discharging
     // sources
@@ -67,6 +71,27 @@ data class PowerState(
     // Net into the battery = sources - loads; positive is good.
     val netWatts: Double? get() = power
     val socShown: Double? get() = soc ?: socFromBattery
+
+    // Jackery-style estimate for the strip: (label, value). Below IDLE_AMPS either way
+    // nothing is shown, because 0.1 A gives a meaningless "400h". Discharging prefers the
+    // monitor's own TimeToGo; charging is computed, since Venus publishes none.
+    val eta: Pair<String, String> get() {
+        val i = currentAvg ?: current; val s = socShown
+        if (i == null || s == null) return "Time" to "--"
+        if (s >= 99.5 && i > -IDLE_AMPS) return "Battery" to "Full"
+        if (i > IDLE_AMPS) return "To full" to (capacityAh?.let { fmtDuration((100 - s) / 100 * it / i * 3600) } ?: "--")
+        if (i < -IDLE_AMPS) return "Left" to ((timeToGoSec ?: capacityAh?.let { s / 100 * it / -i * 3600 })?.let(::fmtDuration) ?: "--")
+        return "Time" to "--"
+    }
+
+    companion object {
+        const val IDLE_AMPS = 0.3
+        const val TAU_SEC = 60.0
+        fun fmtDuration(sec: Double): String {
+            val m = (sec / 60).roundToLong()
+            return when { m < 1 -> "<1m"; m < 60 -> "${m}m"; m < 100 * 60 -> "${m / 60}h ${m % 60}m"; else -> ">99h" }
+        }
+    }
 }
 
 class VenusClient(private val ctx: Context, private val host: String, private val portalId: String, private val scope: CoroutineScope) {
@@ -75,11 +100,17 @@ class VenusClient(private val ctx: Context, private val host: String, private va
     val state: StateFlow<PowerState> = _state
     private var client: MqttClient? = null
     private var job: Job? = null
+    private var smoother: Job? = null
 
     private val topics: Map<String, (PowerState, Double?) -> PowerState> = mapOf(
         "system/0/Dc/Battery/Soc" to { s, v -> s.copy(soc = v) },
         "system/0/Dc/Battery/Voltage" to { s, v -> s.copy(voltage = v) },
-        "system/0/Dc/Battery/Current" to { s, v -> s.copy(current = v) },
+        // A charge/discharge flip (charger unplugged) restarts the average instead of
+        // showing the old direction for a minute.
+        "system/0/Dc/Battery/Current" to { s, v ->
+            val a = s.currentAvg
+            s.copy(current = v, currentAvg = if (v == null) null else if (a == null || (v > PowerState.IDLE_AMPS && a < 0) || (v < -PowerState.IDLE_AMPS && a > 0)) v else a)
+        },
         "system/0/Dc/Battery/Power" to { s, v -> s.copy(power = v) },
         "system/0/Dc/Battery/ConsumedAmphours" to { s, v -> s.copy(consumedAh = v) },
         "system/0/Dc/Battery/TimeToGo" to { s, v -> s.copy(timeToGoSec = v) },
@@ -102,10 +133,20 @@ class VenusClient(private val ctx: Context, private val host: String, private va
         "vebus/+/State" to { s: PowerState, v: Double? -> s.copy(inverterState = v?.toInt()) },
         // B8: a wired battery monitor the system service has not adopted still publishes here.
         "battery/+/Soc" to { s: PowerState, v: Double? -> s.copy(socFromBattery = v) },
+        "battery/+/Capacity" to { s: PowerState, v: Double? -> s.copy(capacityAh = v) },
     )
 
     fun start() {
         if (job != null) return
+        // Time-based EMA on a fixed 1 s tick, so the smoothing is the same however often
+        // the Pi publishes (it only sends changes).
+        smoother = scope.launch {
+            val k = 1 - exp(-1.0 / PowerState.TAU_SEC)
+            while (isActive) {
+                delay(1_000)
+                _state.update { s -> val c = s.current; val a = s.currentAvg; if (c == null || a == null) s else s.copy(currentAvg = a + k * (c - a)) }
+            }
+        }
         job = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 val h = pickHost()
@@ -117,7 +158,7 @@ class VenusClient(private val ctx: Context, private val host: String, private va
         }
     }
 
-    fun stop() { job?.cancel(); job = null; try { client?.disconnect() } catch (e: Exception) {}; client = null }
+    fun stop() { job?.cancel(); job = null; smoother?.cancel(); smoother = null; try { client?.disconnect() } catch (e: Exception) {}; client = null }
 
     private fun matches(pattern: String, key: String): Boolean {
         val p = pattern.split('/'); val k = key.split('/')
