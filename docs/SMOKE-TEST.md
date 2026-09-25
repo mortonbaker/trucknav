@@ -770,3 +770,18 @@ Evidence: `~/evidence/s24-eta-run3` (strip crops: `strip-crops.png`). run2 was 1
 | crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
 
 Evidence: `~/evidence/s25-relay-run5`, `~/evidence/s25-venus-lan-run1`; regressions `s24-eta-s25-final` 11/11, `cockpit-smoke s25-final` 13/13. Earlier runs: run1 fake board emitted spaced JSON (app's board check wants ESPHome's compact form); run2 stale APK (host:port fix not built); run3 exact-colour probe tripped by the tap ripple (screenrecord showed the flip at 45 ms) and R8 probed the strip's Starlink cell. Harness fixes only, criteria unchanged.
+
+## Address search fix — 0.40.1 / 148 (2026-09-25, claude-addr)
+
+Bug: "8131 Gateway Dr Ste 500, Argyle, TX 76226" returned no results (Photon: 0 hits with suite/ZIP; no house point for the new build).
+APK ~/apk-drop/trucknav-0.40.1.apk sha256 7a2d782665a031fb769f3257e9a5373393f86c33bda18839066efd44f703fc1b. Evidence ~/evidence/search-addr-20260925/.
+
+| check | expected | actual | result |
+|---|---|---|---|
+| JVM AddressQueryTest | 4 pass | 4 pass | PASS |
+| tablet: full postal address | exact 8131 hit listed first | "8131 Gateway Drive, Argyle, Texas" then street | PASS |
+| emulator: "33.09962, -97.21646" | single coordinate result | "33.09962, -97.21646" | PASS |
+| emulator: "Mount Scott Oklahoma" | unchanged Photon results | 5 Mount Scott results | PASS |
+| clear search | 0 results | 0 | PASS |
+| crash buffer | 0 | 0 | PASS |
+| HOME restored after install | TruckNav MainActivity | set-home-activity + MainActivity resumed | PASS |
