@@ -785,3 +785,24 @@ APK ~/apk-drop/trucknav-0.40.1.apk sha256 7a2d782665a031fb769f3257e9a5373393f86c
 | clear search | 0 results | 0 | PASS |
 | crash buffer | 0 | 0 | PASS |
 | HOME restored after install | TruckNav MainActivity | set-home-activity + MainActivity resumed | PASS |
+
+## S25b — turn-off 404 fix (0.40.1 / 149, emulator-5554, claude-power, 2026-09-25)
+
+Repro on 0.40.0 with ESPHome-accurate change events: `~/evidence/s25-relay-repro-0400` R9/R7b/R8 FAIL.
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| R1 | Vehicle pane lists 8 relay tiles from the board | 8 tiles | PASS | R1.png |
+| R2 | tap Relay 3 → tile ON ≤ 1000 ms (old: POST + 0.6 s + 8 reads) | 732 ms | PASS | R2.png |
+| R3 | command uses the entity-name URL, no object-id POST | /switch/Relay 3 (Pin 14)/turn_on | PASS | board.jsonl |
+| R2b | tap again → tile OFF ≤ 1000 ms | 775 ms | PASS | - |
+| R9 | Rear Lights tap ×3 → board gets turn_on turn_off turn_on, tile ends ON | POSTs: turn_on turn_off turn_on; tile ON | PASS | R9.png |
+| R4 | Relay 4 switched on at the board → tablet tile ON ≤ 2000 ms | 422 ms | PASS | R4.png |
+| R5 | 30 s idle: 0 GET /switch/* at the board (old: 8 every 15 s) | 0 GETs | PASS | board.jsonl |
+| R6 | board answers 500 → tile back to OFF ≤ 4 s | flip px=blue, back 1298 ms, content-desc="Relay 5 OFF" | PASS | R6.png |
+| R7 | board goes silent → tiles removed (not stale) ≤ 30 s | 11934 ms | PASS | R7-lost.png |
+| R7b | board back → tiles back ≤ 15 s after it answers again | 12006 ms | PASS | R7-back.png |
+| R8 | Starlink: tap → ON, second tap stays ON, hold → OFF | on 662 ms, after tap px=blue, hold off 562 ms | PASS | R8.png |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Real board 192.168.0.174 from the emulator: Relay 3 (pin 14, unassigned) on → off → on, board state matched each tap, no 404.

@@ -106,11 +106,16 @@ class RelayClient(private val ctx: Context) {
 
     private fun onState(host: String, json: String) {
         val o = try { JSONObject(json) } catch (_: Exception) { return }
-        val domId = o.optString("id")                    // "switch-relay_1__starlink_" (kept for compatibility)
-        if (!domId.startsWith("switch-")) return
-        val sw = RelaySwitch(domId.removePrefix("switch-"), o.optString("name"), o.optBoolean("value"))
+        // Change events carry only name_id/id/value/state (ESPHome DETAIL_STATE); "name" comes
+        // with the first dump only. Losing it sent 0.40.0's turn_off to /switch//turn_off (404).
+        // name_id ("switch/Relay 1 (Starlink)") is in every event; "id" moves to a new format in
+        // ESPHome 2026.8, so our key is derived from the name the way ESPHome makes object ids.
+        val nameId = o.optString("name_id")
+        if (!nameId.startsWith("switch/")) return
+        val name = nameId.removePrefix("switch/")
         synchronized(this) {
             val cur = _state.value
+            val sw = RelaySwitch(objectId(name), name, o.optBoolean("value"))
             val list = (cur.switches.filter { it.id != sw.id } + sw).sortedBy { IDS.indexOf(it.id).let { i -> if (i < 0) 99 else i } }
             _state.value = cur.copy(host = host, switches = list, busy = false, error = null, pending = cur.pending - sw.id, updatedAt = System.currentTimeMillis())
         }
@@ -181,4 +186,7 @@ class RelayClient(private val ctx: Context) {
     } }
 
     fun toggle(id: String) = set(id, _state.value.on(id) != true)
+
+    // ESPHome's object id: lower-case, anything but [a-z0-9-] becomes '_'. "Relay 1 (Starlink)" -> "relay_1__starlink_".
+    private fun objectId(name: String) = name.lowercase().map { if (it in 'a'..'z' || it in '0'..'9' || it == '-') it else '_' }.joinToString("")
 }
