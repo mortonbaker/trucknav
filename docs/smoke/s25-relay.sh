@@ -47,6 +47,15 @@ row R3 "command uses the entity-name URL, no object-id POST" "$post" "$([ "$post
 set -- $(box "Relay 3 ON"); T=$(ms); adb -s $S shell input tap $CX $CY; w=$(until_px $X $Y off 3000 $T)
 row R2b "tap again → tile OFF ≤ 1000 ms" "${w} ms" "$([ "$w" != none ] && [ "$w" -le 1000 ] && echo PASS || echo FAIL)" -
 
+# R9 on, then off, then on again on the same tile: each command after a change event
+# must still reach the board (0.40.0 lost the name from the brief event → /switch//turn_off 404)
+set -- $(box "Rear Lights OFF"); XR=$(( $3-30 )); YR=$(( ($2+$4)/2 )); CRX=$(( ($1+$3)/2 )); CRY=$(( ($2+$4)/2 ))
+adb -s $S shell input tap $CRX $CRY; sleep 2.5; adb -s $S shell input tap $CRX $CRY; sleep 2.5; adb -s $S shell input tap $CRX $CRY; sleep 2.5
+seq=$(python3 -c "import json; print(' '.join(json.loads(l)['path'].rsplit('/',1)[1] for l in open('$FLOG') if json.loads(l)['m']=='POST' and 'Rear' in json.loads(l)['path']))")
+st=$(dump | grep -oE 'content-desc="Rear Lights (ON|OFF)"' | grep -oE 'ON|OFF'); f=$(shot R9.png)
+row R9 "Rear Lights tap ×3 → board gets turn_on turn_off turn_on, tile ends ON" "POSTs: $seq; tile $st" "$([ "$seq" = "turn_on turn_off turn_on" ] && [ "$st" = ON ] && echo PASS || echo FAIL)" $f
+adb -s $S shell input tap $CRX $CRY; sleep 2
+
 # R4 change made elsewhere (panel button / HA) shows up ≤ 2 s (old: up to 15 s)
 set -- $(box "Relay 4 OFF"); X4=$(( $3-30 )); Y4=$(( ($2+$4)/2 ))
 T=$(ms); curl -s -X POST $B/_ext/4/on >/dev/null; w=$(until_px $X4 $Y4 on 16000 $T); f=$(shot R4.png)

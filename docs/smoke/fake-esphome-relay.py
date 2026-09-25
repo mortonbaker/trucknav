@@ -3,7 +3,8 @@
 
 Speaks the parts of ESPHome's web_server the app uses: GET /switch/<object_id|name>,
 POST /switch/<name>/turn_on|turn_off, and GET /events (SSE: a state event per switch
-on connect, then one per change, ping every 10 s). Each request is slowed by --lag
+on connect with every field, then one per change carrying only name_id/id/value/state
+as ESPHome does (web_server.cpp DETAIL_STATE), ping every 10 s). Each request is slowed by --lag
 seconds, like the real ESP32. Every request is appended to --log as JSON lines.
 
 Test controls (not ESPHome):
@@ -36,8 +37,13 @@ def doc(i):
             "value": state[i], "state": "ON" if state[i] else "OFF", "assumed_state": False}
 
 
+def brief(i):
+    # what ESPHome sends on a change (DETAIL_STATE): no name, domain or assumed_state
+    return {"name_id": "switch/" + NAMES[i], "id": "switch-" + OIDS[i], "value": state[i], "state": "ON" if state[i] else "OFF"}
+
+
 def push(i):
-    msg = ("event: state\ndata: %s\n\n" % json.dumps(doc(i), separators=(",", ":"))).encode()
+    msg = ("event: state\ndata: %s\n\n" % json.dumps(brief(i), separators=(",", ":"))).encode()
     with lock:
         for w in list(streams):
             try:
