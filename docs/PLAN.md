@@ -35,7 +35,7 @@ Scripts: `docs/cockpit-smoke.sh` (13 rows, every merge), `docs/emu-favorites.sh`
 | S11 | Nav event log | S | DONE 0.14.0 | `files/navlog/` |
 | S12–S14 | End/turns/ETA/mute bugs | — | RESOLVED (OsmAnd was the ghost navigator) | BUGS B1–B4 |
 | S15 | Tile prefetch along route | M | DONE 0.25.1 (emulator); truck drive to confirm B5 | `s15-prefetch.sh` |
-| S16 | Relay board on every network + Pi flow | S | app side DONE 0.21.0; truck side STAGED (ESP32 OTA when battery healthy, operator present) | `s16-pi-relay.sh` |
+| S16 | Relay board on every network + Pi flow | S | app side DONE 0.21.0; ESP32 OTA DONE 2026-09-25 (2026.1.4 → 2026.4.5, 14.19 V, back in 3 s on Everything with wifi_info/uptime/status); away-from-home truck checks still open | `s16-pi-relay.sh` |
 | S17 | Navigation, finished (11 parts) | M–L | DONE 0.28.0; + preview-first favorites and A/B/C badges 0.30.0 | SMOKE-TEST "S17.1–S17.11" |
 | S18 | Voice commands | L | OPEN, after S19/S20 | — |
 | S19 | Trip bar + stops (Google/Tesla) | M | DONE 0.36.0 / 139 (astra-2) | s19-stops.sh 8/8; re-run on 0.38.0 8/8 |
