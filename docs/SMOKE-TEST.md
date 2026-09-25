@@ -727,3 +727,21 @@ controls-s23 merged via merge-s23 (conflict resolution a70e4c3: S19 arrival card
 | tablet install (release) | versionCode 143, MainActivity foreground, 0 crashes | ~/evidence/tablet-0.38.0.png |
 
 Harness notes: s23-controls.sh was pinned to atlas01/emulator-5554 (now SERIAL-overridable, emulator-only guard). s2-camera needs cv2/numpy/PIL — on build01 run with PYTHON=~/.venvs/smoke/bin/python (run merge-s23a failed (d) on the missing module, not the app). s19-stops (b) tapped Ferrostar "Recenter Map", which S23 replaced with "Center on my location".
+
+## S24 — power strip time estimate (0.39.0 / 145, emulator-5554, claude-power, 2026-09-25)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| P1 | charging 10 A, SoC 50, 100 Ah → 'To full 5h 0m' ≤ 20 s | 2s → "To full 5h 0m" | PASS | P1.png |
+| P2 | jump 10→20 A: 8 s later still ≥ 3h 45m (unsmoothed = 2h 30m) | 4h 23m (263 min) | PASS | P2.png |
+| P2b | held at 20 A → converges to ≤ 2h 45m (not frozen; τ 60 s predicts ~100 s after the jump) | 101s → 2h 44m | PASS | P2b.png |
+| P3 | flip to −5 A with TimeToGo 36000 → 'Left 10h 0m' ≤ 15 s (flip resets the average) | 3s → "Left 10h 0m" | PASS | P3.png |
+| P4 | TimeToGo null → computed 50 Ah / 5 A = 'Left 10h 0m' | 2s → "Left 10h 0m" | PASS | P4.png |
+| P5 | TimeToGo 500000 s → 'Left >99h' | 2s → "Left >99h" | PASS | P5.png |
+| P6 | 0.1 A → 'Time --' (idle, no 400h) ≤ 200 s (τ 60 s from −5 A) | 154s → "Time --" | PASS | P6.png |
+| P7 | SoC 99.8 %, +2 A → 'Battery Full' | 3s → "Battery Full" | PASS | P7.png |
+| P8 | charging with no capacity published → 'To full --', no crash | 2s → "To full --" | PASS | P8.png |
+| P9 | estimate cell right edge < 1340 px (no scroll needed) | right=137 | PASS | P9.png |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Evidence: `~/evidence/s24-eta-run3` (strip crops: `strip-crops.png`). run2 was 10/11: P5 FAIL was the harness matching `>99h` against XML-escaped `&gt;99h`, and poll counted iterations as seconds. Both fixed in the harness, criteria unchanged. Regression: `cockpit-smoke.sh s24-run1` 13/13.
