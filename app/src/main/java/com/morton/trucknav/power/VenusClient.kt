@@ -149,9 +149,16 @@ class VenusClient(private val ctx: Context, private val host: String, private va
         }
         job = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                val h = pickHost()
-                if (h == null) { _state.update { it.copy(connected = false, path = "no Pi on the tailnet or this LAN") }; delay(10_000); continue }
-                try { runOnce(h.first, h.second) } catch (e: Exception) { Log.w(TAG, "mqtt ${h.first}: ${e.message}") }
+                val hosts = pickHosts()
+                if (hosts.isEmpty()) { _state.update { it.copy(connected = false, path = "no Pi on the tailnet or this LAN") }; delay(10_000); continue }
+                // Any MQTT broker answers the port probe (Home Assistant's did, 2026-09-25, and got
+                // cached as "the Pi"). A host counts only once it accepts us; try each in turn.
+                for (h in hosts) {
+                    try { runOnce(h.first, h.second); break } catch (e: Exception) {
+                        Log.w(TAG, "mqtt ${h.first}: ${e.message}")
+                        if (h.second == "lan" && prefs.getString("lan", null) == h.first) prefs.edit().remove("lan").apply()
+                    }
+                }
                 _state.update { it.copy(connected = false) }
                 delay(5_000)
             }
@@ -175,17 +182,17 @@ class VenusClient(private val ctx: Context, private val host: String, private va
             .filter { !it.startsWith("100.") }.distinct()
     }
 
-    // (host, path) or null. Cheap TCP probes; the MQTT connect is the real test.
-    private suspend fun pickHost(): Pair<String, String>? {
-        if (tcpOpen(host, 2500)) return host to "tailnet"
-        prefs.getString("lan", null)?.let { if (tcpOpen(it, 800)) return it to "lan" }
+    // Candidate (host, path)s, best first. Cheap TCP probes; the MQTT connect is the real test.
+    private suspend fun pickHosts(): List<Pair<String, String>> {
+        if (tcpOpen(host, 2500)) return listOf(host to "tailnet")
+        prefs.getString("lan", null)?.let { if (tcpOpen(it, 800)) return listOf(it to "lan") }
         val sem = Semaphore(64)
         for (net in ownSubnets()) {
             Log.i(TAG, "scanning $net.0/24 for a broker on 1883")
-            val hit = (1..254).map { i -> scope.async(Dispatchers.IO) { sem.withPermit { "$net.$i".takeIf { tcpOpen(it, 400) } } } }.awaitAll().firstOrNull { it != null }
-            if (hit != null) { prefs.edit().putString("lan", hit).apply(); return hit to "lan" }
+            val hits = (1..254).map { i -> scope.async(Dispatchers.IO) { sem.withPermit { "$net.$i".takeIf { tcpOpen(it, 400) } } } }.awaitAll().filterNotNull()
+            if (hits.isNotEmpty()) return hits.map { it to "lan" }
         }
-        return null
+        return emptyList()
     }
 
     private suspend fun runOnce(h: String, path: String) {
@@ -202,6 +209,7 @@ class VenusClient(private val ctx: Context, private val host: String, private va
             }
         })
         c.connect(MqttConnectOptions().apply { isCleanSession = true; connectionTimeout = 8; keepAliveInterval = 30; isAutomaticReconnect = false })
+        if (path == "lan") prefs.edit().putString("lan", h).apply()   // remembered only once it let us in
         _state.update { it.copy(connected = true, host = h, path = path) }
         Log.i(TAG, "connected to $h via $path")
         topics.keys.forEach { c.subscribe("N/$portalId/$it", 0) }

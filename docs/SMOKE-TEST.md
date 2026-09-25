@@ -745,3 +745,28 @@ Harness notes: s23-controls.sh was pinned to atlas01/emulator-5554 (now SERIAL-o
 | crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
 
 Evidence: `~/evidence/s24-eta-run3` (strip crops: `strip-crops.png`). run2 was 10/11: P5 FAIL was the harness matching `>99h` against XML-escaped `&gt;99h`, and poll counted iterations as seconds. Both fixed in the harness, criteria unchanged. Regression: `cockpit-smoke.sh s24-run1` 13/13.
+
+## S25 — relay live state + Venus LAN fix (0.40.0 / 147, emulator-5554, claude-power, 2026-09-25)
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| R1 | Vehicle pane lists 8 relay tiles from the board | 8 tiles | PASS | R1.png |
+| R2 | tap Relay 3 → tile ON ≤ 1000 ms (old: POST + 0.6 s + 8 reads) | 673 ms | PASS | R2.png |
+| R3 | command uses the entity-name URL, no object-id POST | /switch/Relay 3 (Pin 14)/turn_on | PASS | board.jsonl |
+| R2b | tap again → tile OFF ≤ 1000 ms | 632 ms | PASS | - |
+| R4 | Relay 4 switched on at the board → tablet tile ON ≤ 2000 ms | 404 ms | PASS | R4.png |
+| R5 | 30 s idle: 0 GET /switch/* at the board (old: 8 every 15 s) | 0 GETs | PASS | board.jsonl |
+| R6 | board answers 500 → tile back to OFF ≤ 4 s | flip px=blue, back 1277 ms, content-desc="Relay 5 OFF" | PASS | R6.png |
+| R7 | board goes silent → tiles removed (not stale) ≤ 30 s | 5462 ms | PASS | R7-lost.png |
+| R7b | board back → tiles back ≤ 15 s after it answers again | 8404 ms | PASS | R7-back.png |
+| R8 | Starlink: tap → ON, second tap stays ON, hold → OFF | on 635 ms, after tap px=blue, hold off 603 ms | PASS | R8.png |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+| Item | Criterion | Measured | Result | Evidence |
+|---|---|---|---|---|
+| V1 | refusing broker probed (Not authorized) and NOT cached as the Pi | refused after 0s, cached lan='' | PASS | v1-logcat.txt |
+| V2 | keeps sweeping after the refusal (≥ 2 sweeps logged) | 2nd sweep by 3s | PASS | - |
+| V3 | accepting broker → connected via lan, cached, strip shows SOC 77% | connect 0s, cached='10.0.2.2', 77% after 0s | PASS | V3.png |
+| crash | 0 crashes for com.morton.trucknav in the run window | 0 | PASS | crash.txt |
+
+Evidence: `~/evidence/s25-relay-run5`, `~/evidence/s25-venus-lan-run1`; regressions `s24-eta-s25-final` 11/11, `cockpit-smoke s25-final` 13/13. Earlier runs: run1 fake board emitted spaced JSON (app's board check wants ESPHome's compact form); run2 stale APK (host:port fix not built); run3 exact-colour probe tripped by the tap ripple (screenrecord showed the flip at 45 ms) and R8 probed the strip's Starlink cell. Harness fixes only, criteria unchanged.
